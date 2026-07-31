@@ -1,0 +1,749 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+fixture_schema_version: 1
+description: >-
+  Declarative union schema for numbered transitions, legacy companions, and
+  focused DAS cases, plus the exact closed v1 target model used by canonical
+  store known-answer fixtures.
+
+fixture_family_routing:
+  numbered_scenario:
+    discriminator: "top-level scenario"
+    paths: "scenarios/*.yml"
+    schema_sections: [required_top_level, scenario, observation, prior_state, invocation, oracle]
+  legacy_companion:
+    discriminator: "top-level legacy_fixture_schema_version and variant"
+    paths: "legacy/*.yml"
+    schema_sections: [legacy_fixture]
+  focused_cases:
+    discriminator: "fixture_family equals focused_cases"
+    paths: "focused/*.yml"
+    schema_sections: [focused_fixture]
+
+required_top_level:
+  - scenario
+  - observations
+  - prior_state
+  - invocation
+  - oracle
+
+scenario:
+  required:
+    - id
+    - title
+  constraints:
+    id: "integer 1 through 22"
+    title: "non-empty string matching the conformance scenario"
+
+observation:
+  nullable: true
+  scenario_slots:
+    endpoint_operations: [a, b, c]
+    status_operation: [a, b, c, current]
+    status_constraints: "b and c are null; current holds the status observation"
+  required_when_present:
+    - observation_id
+    - observed_at
+    - status
+    - scope
+  status_values:
+    - complete
+    - partial
+    - unavailable
+  reason_code_values:
+    - docker_cli_absent
+    - docker_daemon_unreachable
+    - docker_daemon_unauthorized
+    - docker_unavailable
+    - docker_command_timeout
+    - docker_output_limit_exceeded
+    - docker_protocol_error
+    - discovery_capacity_exceeded
+    - inspect_identifier_argv_too_large
+    - required_field_missing
+    - scope_membership_unknown
+    - unsupported_runtime_state
+  reason_warning_templates:
+    docker_cli_absent: Docker CLI is unavailable
+    docker_daemon_unreachable: Docker daemon was unreachable
+    docker_daemon_unauthorized: Docker daemon access was unauthorized
+    docker_unavailable: Docker daemon was unavailable
+    docker_command_timeout: Docker discovery command timed out
+    docker_output_limit_exceeded: >-
+      Docker discovery output exceeded the byte limit
+    docker_protocol_error: >-
+      Docker discovery output violated the v1 protocol
+    discovery_capacity_exceeded: >-
+      Docker catalogue exceeded the 4096-container limit
+    inspect_identifier_argv_too_large: >-
+      A selected container identifier exceeded the inspect argument limit
+    required_field_missing: >-
+      Required container evidence is missing; inspect metadata_gaps
+    scope_membership_unknown: Container scope membership is unknown
+    unsupported_runtime_state: >-
+      A selected container reported an unsupported runtime state
+  generated_warning_policy:
+    complete_observation_count: 0
+    noncomplete_observation_count: 1
+    observed_identifiers_interpolated: false
+    per_delta_count_max: 0
+    report_presentation_warning_count_max: 1
+    report_presentation_warning_templates:
+      complete: null
+      partial: >-
+        Observation partial: known rows only; absence is not authoritative.
+      unavailable: >-
+        Observation unavailable: no container state observed; absence is not
+        authoritative.
+    incompatible_scope_uses_notice_not_warning: true
+    opaque_reference_uses_projection_not_warning: true
+  complete_observation_required:
+    - discovery_backend
+    - metadata_gaps
+    - containers
+  complete_fixture_defaults:
+    reason_code: null
+    warnings: []
+  noncomplete_observation_required:
+    - discovery_backend
+    - metadata_gaps
+    - reason_code
+    - warnings
+  unavailable_constraints:
+    containers: null
+  scope_required:
+    - patterns
+    - identity
+    - comparison_schema_version
+  container_required:
+    - name
+    - container_id
+    - full_image_reference
+    - image_id
+    - runtime_state
+  container_optional:
+    - created_at
+    - started_at
+    - finished_at
+    - restart_count
+  optional_evidence_constraint: >-
+    Every optional key is present, including an explicit null or empty list
+    when that is the observed value, or its exact container.field path appears
+    in metadata_gaps. Missing evidence that weakens a supported comparison
+    produces degraded comparability.
+  normalization_constraints:
+    container_id: "when non-null, exactly 64 lowercase hexadecimal characters"
+    image_id: "when non-null, sha256 followed by 64 lowercase hexadecimal characters"
+    scope_identity: "sha256 fingerprint of canonical scope JSON"
+  canonical_runtime_state_values:
+    - created
+    - running
+    - paused
+    - restarting
+    - removing
+    - stopped
+    - dead
+
+prior_state:
+  required:
+    - exists
+    - revision
+    - instance_id
+    - latest_complete_post
+    - journal
+  references:
+    latest_complete_post: "null or an observations key"
+  journal_record_optional:
+    - correlation_id
+
+canonical_state_store:
+  required_fields:
+    - schema_version
+    - comparison_schema_version
+    - instance_id
+    - revision
+    - latest_complete_post
+    - journal
+    - recently_pruned_record_ids
+  allowed_fields:
+    - schema_version
+    - comparison_schema_version
+    - instance_id
+    - revision
+    - latest_complete_post
+    - journal
+    - recently_pruned_record_ids
+  forbidden_legacy_fields:
+    - legacy_baseline
+    - display_values
+    - legacy_history
+
+canonical_model:
+  serialization:
+    encoding: utf-8
+    object_key_order: recursive_ascii
+    separators: [",", ":"]
+    ensure_ascii: false
+    trailing_lf: exactly_one
+    finite_numbers_only: true
+    unknown_fields: reject
+    explicit_nulls: required
+  timestamp:
+    grammar: "YYYY-MM-DDTHH:MM:SS[.fraction]Z"
+    fractional_digits: "1 through 9 when present"
+    trailing_fractional_zero: forbidden
+  scope:
+    exact_fields:
+      - patterns
+      - identity
+      - comparison_schema_version
+    constraints:
+      patterns: normalized_nonempty_list
+      identity: "sha256 plus 64 lowercase hexadecimal characters"
+      comparison_schema_version: 1
+  state_store:
+    exact_fields:
+      - schema_version
+      - comparison_schema_version
+      - instance_id
+      - revision
+      - latest_complete_post
+      - journal
+      - recently_pruned_record_ids
+    constraints:
+      schema_version: 1
+      comparison_schema_version: 1
+      revision: nonnegative_integer
+      latest_complete_post: "Observation or null"
+      journal: "RunRecord list, insertion ordered oldest first"
+      recently_pruned_record_ids: "unique record-ID list, oldest first"
+  run_record:
+    exact_fields:
+      - record_id
+      - correlation_id
+      - created_at
+      - updated_at
+      - expected_post_revision
+      - pre_signature
+      - post_signature
+      - status
+      - pre
+      - post
+      - between_observation_delta
+      - run_window_delta
+      - pre_baseline
+      - post_baseline
+    constraints:
+      correlation_id: "bounded string or null"
+      expected_post_revision: "nonnegative integer or null"
+      pre_signature: "sha256 plus 64 lowercase hexadecimal characters, or null"
+      post_signature: "sha256 plus 64 lowercase hexadecimal characters, or null"
+      status:
+        - open
+        - complete
+        - incomplete_pre
+        - incomplete_post
+        - incomplete_both
+        - scope_mismatch
+      pre: "Observation or null"
+      post: "Observation or null"
+      between_observation_delta: "DeltaResult or null"
+      run_window_delta: "DeltaResult or null"
+      pre_baseline: "BaselineResult or null"
+      post_baseline: "BaselineResult or null"
+  observation:
+    exact_fields:
+      - observation_id
+      - observed_at
+      - scope
+      - status
+      - reason_code
+      - warnings
+      - discovery_backend
+      - metadata_gaps
+      - containers
+    constraints:
+      status: [complete, partial, unavailable]
+      reason_code: "closed observation.reason_code_values member or null"
+      warnings: bounded_safe_warning_list
+      discovery_backend: docker_cli_v1
+      metadata_gaps: "unique ASCII-byte-sorted adapter paths"
+      containers: "name-keyed ContainerObservation map or null"
+      complete_containers: "map, possibly empty"
+      unavailable_containers: null
+  container_observation:
+    exact_fields:
+      - name
+      - container_id
+      - full_image_reference
+      - image_id
+      - runtime_state
+      - created_at
+      - started_at
+      - finished_at
+      - restart_count
+    nullable_fields:
+      - container_id
+      - full_image_reference
+      - image_id
+      - runtime_state
+      - created_at
+      - started_at
+      - finished_at
+      - restart_count
+    constraints:
+      name: "[A-Za-z0-9][A-Za-z0-9_.-]{0,254}"
+      container_id: "64 lowercase hexadecimal characters or null"
+      full_image_reference: "1 through 4096 printable ASCII bytes without whitespace, or null"
+      image_id: "sha256 plus 64 lowercase hexadecimal characters, or null"
+      runtime_state: "canonical runtime-state member or null"
+      restart_count: "nonnegative integer or null"
+  delta_result:
+    exact_fields:
+      - comparability
+      - comparison_schema_version
+      - from_observation_id
+      - from_observed_at
+      - from_scope
+      - to_observation_id
+      - to_observed_at
+      - to_scope
+      - changes
+      - warnings
+    constraints:
+      comparability:
+        - exact
+        - degraded
+        - no_baseline
+        - incomplete
+        - incompatible_scope
+      comparison_schema_version: 1
+      endpoint_triples: "ID, time, and scope are all null or all present"
+      changes: "ContainerDelta list, ASCII-byte sorted by container_name"
+      warnings: bounded_safe_warning_list
+    warning_templates:
+      exact: []
+      degraded: []
+      no_baseline: []
+      incomplete: []
+      incompatible_scope: []
+  container_delta:
+    exact_fields:
+      - container_name
+      - primary_kind
+      - kinds
+      - before
+      - after
+      - image_reference_changed
+      - image_content_changed
+      - image_content_evidence
+    constraints:
+      primary_kind: "oracle.container_delta_kind_values member"
+      kinds: "unique precedence-ordered kind list"
+      before: "ContainerObservation or null"
+      after: "ContainerObservation or null"
+      image_reference_changed: "Boolean or null"
+      image_content_changed: "Boolean or null"
+      image_content_evidence: "literal evidence-kind string 'image_id', or null"
+  baseline_result:
+    exact_fields: [advanced, before, after]
+    constraints:
+      advanced: Boolean
+      before: "observation ID or null"
+      after: "observation ID or null"
+  phase_signature:
+    exact_input_fields:
+      - comparison_schema_version
+      - correlation_id
+      - instance_id
+      - operation
+      - scope
+      - signature_schema_version
+    trailing_lf: false
+    digest: "sha256 prefix plus lowercase SHA-256 hexadecimal digest"
+  failure_envelope:
+    exact_fields:
+      - schema_version
+      - host
+      - instance_id
+      - operation
+      - record_id
+      - observation_status
+      - failure_reason
+      - observation_reason
+      - persistence_outcome
+      - committed_result_replayable
+      - replay_guidance
+    failure_reason_values:
+      - observation_noncomplete
+      - invalid_input
+      - unsafe_state_namespace
+      - corrupt_state
+      - state_lock_timeout
+      - state_write_failed
+      - state_size_limit_exceeded
+      - revision_conflict
+      - signature_conflict
+      - record_pruned
+      - unknown_record
+      - render_failed
+      - presentation_capacity_exceeded
+    observation_reason: "closed observation.reason_code_values member or null"
+    replay_guidance_values:
+      - null
+      - "Retry the retained record with failure_policy=report"
+      - "Retry the retained record with report_mode=none"
+      - "Retry with the same record_id and unchanged phase inputs"
+  report_model:
+    exact_fields:
+      - presentation_schema_version
+      - header
+      - primary_table
+      - between_observation_summary
+      - run_window_notice
+      - counts
+      - warnings
+      - baseline_outcome
+      - journal_status
+      - persistence_outcome
+    constraints:
+      presentation_schema_version: 1
+      header: ReportHeader
+      primary_table: ReportTable
+      between_observation_summary: "ReportNotice or null"
+      run_window_notice: "ReportNotice or null"
+      counts: "ReportCounts selected by primary_table.kind"
+      warnings: bounded_safe_warning_list
+      baseline_outcome: "BaselineResult or null"
+  report_header:
+    exact_fields:
+      - host
+      - instance_id
+      - operation
+      - observed_at
+      - observation_status
+      - correlation_id
+      - simulated
+      - replay_outcome
+  report_table:
+    exact_fields: [kind, columns, rows]
+    constraints:
+      kind: [run_window, current, known_endpoint]
+  run_window_row:
+    exact_fields:
+      - container_name
+      - machine_before
+      - machine_after
+      - cells
+  endpoint_row:
+    exact_fields:
+      - container_name
+      - machine_current
+      - cells
+  run_window_cells:
+    exact_fields: [container, before, after, change]
+  endpoint_cells:
+    exact_fields: [container, image, state]
+  report_notice:
+    exact_fields: [comparability, message]
+  report_counts:
+    run_window:
+      permitted_kind_fields:
+        - added
+        - removed
+        - recreated
+        - image_changed
+        - started
+        - stopped
+        - restarted
+        - state_changed
+        - unchanged
+      required_fields: [total]
+      kind_field_inclusion: nonzero_only
+      constraints:
+        total: "row count"
+        kind_sum: total
+    endpoint:
+      table_kinds: [current, known_endpoint]
+      exact_fields:
+        - authoritative_changes
+        - known_rows
+        - rows_with_required_gaps
+      constraints:
+        authoritative_changes: 0
+        known_rows: "row count"
+        rows_with_required_gaps: "rows missing one or more required fields"
+    rendered_order:
+      run_window:
+        - added
+        - removed
+        - recreated
+        - image_changed
+        - started
+        - stopped
+        - restarted
+        - state_changed
+        - unchanged
+        - total
+      endpoint:
+        - authoritative_changes
+        - known_rows
+        - rows_with_required_gaps
+
+invocation:
+  common_required:
+    - operation
+    - instance_id
+  required_for_observation_operations:
+    - record_id
+    - check_mode
+    - scope
+  required_for_boundary_operation:
+    - check_mode
+    - source_policy
+    - reset_policy
+  operation_values:
+    - pre
+    - post
+    - status
+  boundary_operation_values:
+    - mdad_legacy_assess
+  operation_contracts:
+    observe: "pre, post, and status use tasks_from observe"
+    mdad_legacy_assess: >-
+      MDAD-owned cutover boundary, not a public external-role operation; it
+      never discovers Docker or accesses the DAS store.
+  optional_observation_fields:
+    - correlation_id
+
+oracle:
+  required:
+    - between_observation_delta
+    - run_window_delta
+    - baseline
+    - journal
+    - persistence
+    - human
+    - machine_result
+  delta_required:
+    - comparability
+    - comparison_schema_version
+    - from_observation_id
+    - to_observation_id
+    - changes
+    - warnings
+  implementation_delta_context_required:
+    - from_observed_at
+    - from_scope
+    - to_observed_at
+    - to_scope
+  delta_nullable_for:
+    - status
+    - check_mode_simulation
+    - mdad_legacy_assess
+  comparability_values:
+    - exact
+    - degraded
+    - no_baseline
+    - incompatible_scope
+    - incomplete
+  comparability_nullable_when_delta_absent: true
+  container_delta_optional:
+    - image_reference_changed
+    - image_content_changed
+    - image_content_evidence
+  fixture_container_delta_required_subset:
+    - container_name
+    - primary_kind
+    - kinds
+  implementation_container_delta_required:
+    - container_name
+    - primary_kind
+    - kinds
+    - before
+    - after
+  implementation_endpoint_constraints:
+    added: "before is null and after is the full normalized value"
+    removed: "before is the full normalized value and after is null"
+    other: "before and after are both full normalized values"
+  container_delta_kind_values:
+    - added
+    - removed
+    - recreated
+    - image_changed
+    - started
+    - stopped
+    - restarted
+    - state_changed
+    - unchanged
+  stable_journal_status_values:
+    - open
+    - complete
+    - incomplete_pre
+    - incomplete_post
+    - incomplete_both
+    - scope_mismatch
+  journal_status_nullable_for:
+    - status
+    - check_mode_simulation
+    - mdad_legacy_assess
+  persistence_outcome_values:
+    - committed
+    - not_attempted
+    - failed
+    - conflict
+  baseline_required:
+    - advanced
+    - before
+    - after
+  baseline_nullable_for:
+    - status
+    - check_mode_simulation
+  human_required:
+    - minimum_messages
+  machine_result_exact_v1_fields:
+    - schema_version
+    - operation
+    - instance_id
+    - record_id
+    - correlation_id
+    - observation
+    - observation_status
+    - scope_identity
+    - between_observation_delta
+    - run_window_delta
+    - baseline
+    - baseline_advanced
+    - journal_status
+    - persistence_outcome
+    - replay_outcome
+    - simulated
+    - skipped
+    - warnings
+  machine_result_required_observation:
+    - schema_version
+    - operation
+    - instance_id
+    - record_id
+    - observation
+    - observation_status
+    - scope_identity
+    - baseline_advanced
+    - journal_status
+    - persistence_outcome
+  machine_result_required_boundary:
+    - schema_version
+    - operation
+    - instance_id
+    - adapter_validation_result
+    - cutover_report_outcome
+    - fresh_native_start_allowed
+    - cutover_blocked
+    - das_invoked
+    - das_persistence_outcome
+    - latest_complete_post_after
+    - journal_status
+  machine_result_optional_observation:
+    - correlation_id
+
+oracle_semantics:
+  - "Numbered-scenario machine_result mappings are semantic subsets; additional fields are allowed only while matching those planning fixtures."
+  - "Successful nonfailed implementation output is not a subset: it contains exactly machine_result_exact_v1_fields, preserves explicit nulls, and forbids unknown keys; the focused comparable-post case proves this exact shape."
+  - "Scenario 21 is the exception: its failed public machine_result contains only the bounded docker_ansible_summary_failure task envelope; proposed transition evidence remains solely in the internal oracle fields."
+  - "For numbered observation operations, machine_result.observation references the asserted endpoint envelope; an implementation returns that full allowlisted envelope."
+  - "Fixture deltas are expected subsets; the harness separately requires full before/after endpoints."
+  - "Fixture delta ID fields use the canonical from_observation_id and to_observation_id names."
+  - "Persisted implementation deltas also require endpoint times and full normalized scopes."
+  - "A normal post fixture's prior_state contains its matching open record and B."
+  - "Null journal_status is required for status and check-mode simulations."
+  - "Conflict is a persistence outcome and never a journal lifecycle status."
+  - "A complete C advances the baseline only when persistence commits."
+  - "A and B references name entries under observations; missing endpoints are null."
+  - "Native image content change requires the mandatory image ID."
+  - "Image reference and content changes are distinct facets."
+  - "record_id selects a retained record; correlation_id groups results but never performs lookup."
+  - "A matching post inherits an omitted pre correlation or must repeat it exactly; mismatch rejects before discovery."
+  - "Human minimum_messages are semantic substrings, not an exact snapshot."
+
+legacy_fixture:
+  required_top_level:
+    - legacy_fixture_schema_version
+    - variant
+    - description
+    - sources
+    - prior_state
+    - adapter_invocation
+    - oracle
+  variant_values:
+    - valid
+    - missing
+    - partial
+    - malformed
+    - valid_source_conflict
+  source_keys:
+    - display_state
+    - history
+    - simple_versions
+  constraints:
+    source_payloads: "synthetic only"
+    latest_complete_post: "remains null because DAS is untouched"
+    journal_status: "remains null because DAS is untouched"
+    das_boundary: >-
+      Every variant sets das_invoked false and das_persistence_outcome
+      not_attempted. Valid evidence is reported and backed up outside DAS;
+      malformed or unresolved conflicting evidence blocks cutover.
+    backup_completion: >-
+      backups.completed equals backups.required before a report may permit
+      fresh native cutover. The cutover report contains one completed result
+      for every required source; fixtures use source identifiers, never paths.
+
+focused_fixture:
+  required_top_level:
+    - fixture_family
+    - topic
+    - description
+  fixture_family_value: focused_cases
+  topic_values:
+    - operation_contract
+    - change_kinds
+    - persistence
+    - normalization
+    - legacy_boundary
+    - presentation
+    - execution_surface
+    - image_display
+  case_container:
+    operation_contract: cases
+    change_kinds: cases
+    persistence: cases
+    normalization: [scope_cases, discovery_cases, container_cases]
+    legacy_boundary: cases
+    presentation: cases
+    execution_surface: cases
+    image_display: cases
+  constraints:
+    identifiers_and_hashes: "synthetic and deterministic"
+    raw_inspect_payloads: "forbidden"
+    secret_bearing_fields: "forbidden"
+    execution_budget: >-
+      Enabled operations use one remote module, exactly one role-owned task
+      start, no per-object Ansible events, and one list plus deterministic
+      selected-container inspect chunks.
+    presentation_boundary: >-
+      Exact canonical values remain outside the derived display projection;
+      new-renderer golden snapshots do not make legacy table bytes compatible.
+    discovery_reason_codes:
+      - docker_cli_absent
+      - docker_daemon_unreachable
+      - docker_daemon_unauthorized
+      - docker_unavailable
+      - docker_command_timeout
+      - docker_output_limit_exceeded
+      - docker_protocol_error
+      - discovery_capacity_exceeded
+      - inspect_identifier_argv_too_large
+      - required_field_missing
+      - scope_membership_unknown
+      - unsupported_runtime_state

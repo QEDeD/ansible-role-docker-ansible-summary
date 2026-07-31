@@ -1,0 +1,1774 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+fixture_family: focused_cases
+topic: presentation
+description: >-
+  Semantic human output, versioned report models, layout invariants, callback
+  transport, and untruncated machine-output cases. Legacy table bytes are not
+  contractual; the future v1 renderer will have exact golden snapshots.
+
+cases:
+  - id: lifecycle_messages_are_distinct
+    input_variants:
+      no_baseline:
+        comparability: no_baseline
+      no_observed_difference:
+        comparability: exact
+        changes: []
+      incompatible_scope:
+        comparability: incompatible_scope
+      observation_partial:
+        observation_status: partial
+      observation_unavailable:
+        observation_status: unavailable
+        reason_code: docker_unavailable
+      incomplete_run_pair:
+        journal_status: incomplete_post
+      persistence_conflict:
+        persistence_outcome: conflict
+    oracle:
+      minimum_messages:
+        no_baseline: ["No previous complete observation"]
+        no_observed_difference: ["No observed run-window difference"]
+        incompatible_scope: ["Scopes are incompatible", "No additions or removals inferred"]
+        observation_partial: ["Observation partial"]
+        observation_unavailable: ["Docker unavailable"]
+        incomplete_run_pair: ["Run-window comparison unavailable"]
+        persistence_conflict: ["Concurrent writer conflict", "Store unchanged"]
+      causal_attribution_phrases_forbidden:
+        - Ansible caused
+        - deployment changed
+        - task restarted
+
+  - id: machine_values_are_never_presentation_truncated
+    input:
+      container_name: fixture-service-with-a-deliberately-long-but-valid-name-0123456789
+      full_image_reference: registry.example.com:5443/fictional/team/component-with-a-long-name:release-2026-02-04
+      image_id: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    presentation:
+      configured_max_width: 32
+      truncation_allowed: true
+    oracle:
+      machine_container_name: fixture-service-with-a-deliberately-long-but-valid-name-0123456789
+      machine_full_image_reference: registry.example.com:5443/fictional/team/component-with-a-long-name:release-2026-02-04
+      machine_image_id: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      machine_values_truncated: false
+      human_report_readable: true
+
+  - id: host_blocks_identify_independent_results
+    input:
+      hosts:
+        - fixture-a.example.com
+        - fixture-b.example.com
+    oracle:
+      one_host_identifiable_block_per_result: true
+      atomic_multi_host_claim: false
+      callback_interleaving_must_not_change_machine_results: true
+
+  - id: warning_normalization_is_exact_bounded_and_sorted
+    input:
+      fixture_layer: internal_warning_normalizer_unit
+      role_generated_templates_applied: false
+      warning_sources:
+        observation:
+          - alpha warning
+          - duplicate warning
+          - zeta warning
+        delta:
+          - Beta warning
+          - duplicate warning
+        persistence:
+          - alpha warning
+      invalid_variants:
+        non_printable:
+          recipe: prefix_lf_suffix
+        overlong_item:
+          recipe: repeated_ascii
+          character: x
+          bytes: 257
+        too_many_items:
+          recipe: indexed_warnings
+          count: 65
+        total_serialized_bytes:
+          recipe: indexed_fixed_width_warnings
+          count: 33
+          item_bytes: 250
+    oracle:
+      normalized_warnings:
+        - Beta warning
+        - alpha warning
+        - duplicate warning
+        - zeta warning
+      exact_string_deduplication: true
+      ordering: ascii_byte
+      printable_ascii_only: true
+      per_item_max_bytes: 256
+      maximum_entries: 64
+      maximum_serialized_utf8_bytes: 8192
+      serialized_form: compact_json_utf8
+      invalid_input_policy: reject_model
+      silent_truncation_allowed: false
+      invalid_variant_constraints:
+        non_printable: printable_ascii
+        overlong_item: per_item_bytes
+        too_many_items: entry_count
+        total_serialized_bytes: serialized_utf8_bytes
+
+  - id: warning_generation_aggregates_metadata_gaps
+    input:
+      reason_code: required_field_missing
+      metadata_gap_recipe:
+        container_prefix: fixture-
+        container_count: 4096
+        field: full_image_reference
+    oracle:
+      exact_warnings:
+        - "Required container evidence is missing; inspect metadata_gaps"
+      exact_warning_count: 1
+      exact_warning_item_bytes: 61
+      exact_serialized_warning_bytes: 65
+      exact_metadata_gap_count: 4096
+      observed_identifiers_interpolated: false
+      metadata_gaps_retain_exact_detail: true
+
+  - id: comparable_post_includes_changed_and_unchanged_rows
+    input:
+      operation: post
+      host: fixture-a.example.com
+      instance_id: fixture-mdad
+      observation_status: complete
+      report_width: 120
+      machine_result:
+        schema_version: 1
+        operation: post
+        instance_id: fixture-mdad
+        record_id: record-presentation-01
+        correlation_id: null
+        observation_status: complete
+        observation:
+          observation_id: obs-presentation-c
+          observed_at: "2026-07-30T12:00:02Z"
+          status: complete
+          scope: &presentation_scope
+            patterns: ["fixture-*"]
+            identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+            comparison_schema_version: 1
+          reason_code: null
+          warnings: []
+          discovery_backend: docker_cli_v1
+          metadata_gaps: []
+          containers:
+            fixture-api: &presentation_api_after
+              name: fixture-api
+              container_id: "00000000000000000000000000000000000000000000000000000000000000a1"
+              full_image_reference: registry.example.com/team/api:v2
+              image_id: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+              runtime_state: running
+              created_at: "2026-07-30T11:00:00Z"
+              started_at: "2026-07-30T11:00:10Z"
+              finished_at: null
+              restart_count: 0
+            fixture-cache: &presentation_cache
+              name: fixture-cache
+              container_id: "00000000000000000000000000000000000000000000000000000000000000c1"
+              full_image_reference: registry.example.com/team/cache:v1
+              image_id: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+              runtime_state: running
+              created_at: "2026-07-30T09:00:00Z"
+              started_at: "2026-07-30T09:00:10Z"
+              finished_at: null
+              restart_count: 0
+        scope_identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+        run_window_delta:
+          comparability: exact
+          comparison_schema_version: 1
+          from_observation_id: obs-presentation-b
+          from_observed_at: "2026-07-30T12:00:01Z"
+          from_scope: *presentation_scope
+          to_observation_id: obs-presentation-c
+          to_observed_at: "2026-07-30T12:00:02Z"
+          to_scope: *presentation_scope
+          changes:
+            - container_name: fixture-api
+              primary_kind: image_changed
+              kinds: [image_changed]
+              image_reference_changed: true
+              image_content_changed: true
+              image_content_evidence: image_id
+              before: &presentation_api_before
+                name: fixture-api
+                container_id: "00000000000000000000000000000000000000000000000000000000000000a1"
+                full_image_reference: registry.example.com/team/api:v1
+                image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+                runtime_state: running
+                created_at: "2026-07-30T09:00:00Z"
+                started_at: "2026-07-30T09:00:10Z"
+                finished_at: null
+                restart_count: 0
+              after: *presentation_api_after
+            - container_name: fixture-cache
+              primary_kind: unchanged
+              kinds: [unchanged]
+              before: *presentation_cache
+              after: *presentation_cache
+              image_reference_changed: false
+              image_content_changed: false
+              image_content_evidence: image_id
+          warnings: []
+        between_observation_delta:
+          comparability: exact
+          comparison_schema_version: 1
+          from_observation_id: obs-presentation-a
+          from_observed_at: "2026-07-30T12:00:00Z"
+          from_scope: *presentation_scope
+          to_observation_id: obs-presentation-b
+          to_observed_at: "2026-07-30T12:00:01Z"
+          to_scope: *presentation_scope
+          changes:
+            - container_name: fixture-api
+              primary_kind: unchanged
+              kinds: [unchanged]
+              before: *presentation_api_before
+              after: *presentation_api_before
+              image_reference_changed: false
+              image_content_changed: false
+              image_content_evidence: image_id
+            - container_name: fixture-cache
+              primary_kind: unchanged
+              kinds: [unchanged]
+              before: *presentation_cache
+              after: *presentation_cache
+              image_reference_changed: false
+              image_content_changed: false
+              image_content_evidence: image_id
+          warnings: []
+        baseline:
+          advanced: true
+          before: obs-presentation-a
+          after: obs-presentation-c
+        baseline_advanced: true
+        journal_status: complete
+        persistence_outcome: committed
+        replay_outcome: null
+        simulated: false
+        skipped: false
+        warnings: []
+    oracle:
+      presentation_schema_version: 1
+      primary_table_kind: run_window
+      columns: [CONTAINER, BEFORE, AFTER, CHANGE]
+      row_names: [fixture-api, fixture-cache]
+      unchanged_rows_included: true
+      table_blocks: 1
+      between_observation_outcome: no_observed_difference
+      between_observation_summary_omitted: true
+      causal_attribution: false
+      exact_report_model:
+        presentation_schema_version: 1
+        header:
+          host: fixture-a.example.com
+          instance_id: fixture-mdad
+          operation: post
+          observed_at: "2026-07-30T12:00:02Z"
+          observation_status: complete
+          correlation_id: null
+          simulated: false
+          replay_outcome: null
+        primary_table:
+          kind: run_window
+          columns: [CONTAINER, BEFORE, AFTER, CHANGE]
+          rows:
+            - container_name: fixture-api
+              machine_before: *presentation_api_before
+              machine_after: *presentation_api_after
+              cells:
+                container: fixture-api
+                before: "api:v1 / running"
+                after: "api:v2 / running"
+                change: "img+ref changed"
+            - container_name: fixture-cache
+              machine_before: *presentation_cache
+              machine_after: *presentation_cache
+              cells:
+                container: fixture-cache
+                before: "cache:v1 / running"
+                after: "cache:v1 / running"
+                change: unchanged
+        between_observation_summary: null
+        run_window_notice: null
+        counts:
+          total: 2
+          image_changed: 1
+          unchanged: 1
+        warnings: []
+        baseline_outcome:
+          advanced: true
+          before: obs-presentation-a
+          after: obs-presentation-c
+        journal_status: complete
+        persistence_outcome: committed
+      exact_ascii_rendered_block: |-
+        DAS v1 | host=fixture-a.example.com | instance=fixture-mdad | operation=post
+        Observed 2026-07-30T12:00:02Z | status=complete
+        +------------------------------------+------------------------------+------------------------------+-------------------+
+        | CONTAINER                          | BEFORE                       | AFTER                        | CHANGE            |
+        +------------------------------------+------------------------------+------------------------------+-------------------+
+        | fixture-api                        | api:v1 / running             | api:v2 / running             | img+ref changed   |
+        | fixture-cache                      | cache:v1 / running           | cache:v1 / running           | unchanged         |
+        +------------------------------------+------------------------------+------------------------------+-------------------+
+        Counts: image_changed=1, unchanged=1, total=2
+        Baseline: advanced (obs-presentation-a -> obs-presentation-c)
+        Journal: complete | Persistence: committed
+        Warnings: none
+      renderer_projection:
+        column_content_widths: [34, 28, 28, 17]
+        separator_positions: [0, 37, 68, 99, 119]
+        image_label_width: 15
+        exact_container_labels:
+          fixture-api: fixture-api
+          fixture-cache: fixture-cache
+        opaque_markers: []
+        legend_entries: []
+
+  - id: complete_all_removals_still_render_rows
+    input:
+      operation: post
+      observation_status: complete
+      before_names: [fixture-api, fixture-worker]
+      after_names: []
+      changes:
+        fixture-api: removed
+        fixture-worker: removed
+    oracle:
+      primary_table_kind: run_window
+      row_names: [fixture-api, fixture-worker]
+      after_marker: "<absent>"
+      removed_row_count: 2
+      generic_no_match_replacement_forbidden: true
+      table_blocks: 1
+
+  - id: complete_empty_renders_explicit_zero_row_table
+    input:
+      operation: status
+      observation_status: complete
+      current_names: []
+      complete_run_window_endpoint_names:
+        before: []
+        after: []
+    oracle:
+      primary_table_kind: current
+      row_count: 0
+      empty_catalogue_authoritative: true
+      minimum_messages: ["No containers observed in complete scope"]
+      exact_empty_table_messages:
+        current: "No containers observed in complete scope"
+        run_window: "No containers observed in either complete run-window endpoint"
+        known_endpoint: null
+      table_blocks: 1
+
+  - id: incomplete_endpoint_shows_known_state_without_absence
+    input:
+      operation: post
+      host: fixture-partial.example.com
+      instance_id: fixture-mdad
+      pre_status: complete
+      post_status: partial
+      report_width: 100
+      known_post_names: [fixture-api, fixture-worker]
+      names_missing_required_evidence: [fixture-worker]
+      machine_result:
+        schema_version: 1
+        operation: post
+        instance_id: fixture-mdad
+        record_id: record-presentation-partial
+        observation_status: partial
+        observation:
+          observation_id: obs-presentation-partial-c
+          observed_at: "2026-07-30T12:10:02Z"
+          status: partial
+          scope:
+            patterns: ["fixture-*"]
+            identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+            comparison_schema_version: 1
+          discovery_backend: synthetic
+          metadata_gaps: [fixture-worker.full_image_reference]
+          reason_code: required_field_missing
+          warnings:
+            - "Required container evidence is missing; inspect metadata_gaps"
+          containers:
+            fixture-api: &presentation_partial_api
+              name: fixture-api
+              container_id: "00000000000000000000000000000000000000000000000000000000000000a2"
+              full_image_reference: registry.example.com/team/api:v2
+              image_id: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+              runtime_state: running
+              created_at: "2026-07-30T11:00:00Z"
+              started_at: "2026-07-30T11:00:10Z"
+              finished_at: null
+              restart_count: 0
+            fixture-worker: &presentation_partial_worker
+              name: fixture-worker
+              container_id: "00000000000000000000000000000000000000000000000000000000000000f2"
+              full_image_reference: null
+              image_id: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+              runtime_state: stopped
+              created_at: "2026-07-30T08:00:00Z"
+              started_at: "2026-07-30T08:00:10Z"
+              finished_at: "2026-07-30T12:09:50Z"
+              restart_count: 0
+        scope_identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+        run_window_delta:
+          comparability: incomplete
+          comparison_schema_version: 1
+          from_observation_id: obs-presentation-partial-b
+          to_observation_id: obs-presentation-partial-c
+          changes: []
+          warnings: []
+        baseline:
+          advanced: false
+          before: obs-presentation-partial-a
+          after: obs-presentation-partial-a
+        baseline_advanced: false
+        journal_status: incomplete_post
+        persistence_outcome: committed
+        replay_outcome: null
+        simulated: false
+    oracle:
+      exact_report_model:
+        presentation_schema_version: 1
+        header:
+          host: fixture-partial.example.com
+          instance_id: fixture-mdad
+          operation: post
+          observed_at: "2026-07-30T12:10:02Z"
+          observation_status: partial
+          correlation_id: null
+          simulated: false
+          replay_outcome: null
+        primary_table:
+          kind: known_endpoint
+          columns: [CONTAINER, IMAGE, STATE]
+          rows:
+            - container_name: fixture-api
+              machine_current: *presentation_partial_api
+              cells:
+                container: fixture-api
+                image: api:v2
+                state: running
+            - container_name: fixture-worker
+              machine_current: *presentation_partial_worker
+              cells:
+                container: fixture-worker
+                image: "<unknown>"
+                state: stopped
+        between_observation_summary: null
+        run_window_notice:
+          comparability: incomplete
+          message: "Run-window comparison unavailable"
+        counts:
+          known_rows: 2
+          rows_with_required_gaps: 1
+          authoritative_changes: 0
+        warnings:
+          - "Observation partial: known rows only; absence is not authoritative."
+          - "Required container evidence is missing; inspect metadata_gaps"
+        baseline_outcome:
+          advanced: false
+          before: obs-presentation-partial-a
+          after: obs-presentation-partial-a
+        journal_status: incomplete_post
+        persistence_outcome: committed
+      primary_table_kind: known_endpoint
+      authoritative_comparison_rows: 0
+      absent_markers_inferred: false
+      exact_columns: [CONTAINER, IMAGE, STATE]
+      exact_known_rows:
+        - container_name: fixture-api
+          machine_current: *presentation_partial_api
+          cells:
+            container: fixture-api
+            image: api:v2
+            state: running
+        - container_name: fixture-worker
+          machine_current: *presentation_partial_worker
+          cells:
+            container: fixture-worker
+            image: "<unknown>"
+            state: stopped
+      exact_row_order: [fixture-api, fixture-worker]
+      missing_evidence_cell:
+        container_name: fixture-worker
+        column: IMAGE
+        rendered_marker: "<unknown>"
+      endpoint_not_observed_token_used: false
+      comparison_rows_synthesized: false
+      counts:
+        known_rows: 2
+        rows_with_required_gaps: 1
+        authoritative_changes: 0
+      baseline_outcome:
+        advanced: false
+        before: obs-presentation-partial-a
+        after: obs-presentation-partial-a
+      journal_status: incomplete_post
+      persistence_outcome: committed
+      minimum_messages:
+        - "Observation partial: known rows only; absence is not authoritative."
+      table_blocks: 1
+      renderer_projection:
+        column_content_widths: [34, 46, 10]
+        separator_positions: [0, 37, 86, 99]
+      exact_ascii_rendered_block: |-
+        DAS v1 | host=fixture-partial.example.com | instance=fixture-mdad | operation=post
+        Observed 2026-07-30T12:10:02Z | status=partial
+        +------------------------------------+------------------------------------------------+------------+
+        | CONTAINER                          | IMAGE                                          | STATE      |
+        +------------------------------------+------------------------------------------------+------------+
+        | fixture-api                        | api:v2                                         | running    |
+        | fixture-worker                     | <unknown>                                      | stopped    |
+        +------------------------------------+------------------------------------------------+------------+
+        Run-window comparison unavailable
+        Counts: authoritative_changes=0, known_rows=2, rows_with_required_gaps=1
+        Baseline: unchanged (obs-presentation-partial-a -> obs-presentation-partial-a)
+        Journal: incomplete_post | Persistence: committed
+        Warnings: Observation partial: known rows only; absence is not authoritative.
+          Required container evidence is missing; inspect metadata_gaps
+
+  - id: between_observation_summary_is_exact
+    input:
+      between_observation_delta:
+        comparability: exact
+        comparison_schema_version: 1
+        from_observation_id: obs-presentation-drift-a
+        from_observed_at: "2026-07-30T12:29:59Z"
+        from_scope:
+          patterns: ["fixture-*"]
+          identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+          comparison_schema_version: 1
+        to_observation_id: obs-presentation-drift-b
+        to_observed_at: "2026-07-30T12:30:00Z"
+        to_scope:
+          patterns: ["fixture-*"]
+          identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+          comparison_schema_version: 1
+        changes:
+          - container_name: fixture-api
+            primary_kind: image_changed
+            kinds: [image_changed]
+            before:
+              name: fixture-api
+              container_id: "00000000000000000000000000000000000000000000000000000000000000e1"
+              full_image_reference: registry.example.com/team/api:v1
+              image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+              runtime_state: running
+              created_at: "2026-07-30T11:00:00Z"
+              started_at: "2026-07-30T11:00:10Z"
+              finished_at: null
+              restart_count: 0
+            after:
+              name: fixture-api
+              container_id: "00000000000000000000000000000000000000000000000000000000000000e1"
+              full_image_reference: registry.example.com/team/api:v2
+              image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+              runtime_state: running
+              created_at: "2026-07-30T11:00:00Z"
+              started_at: "2026-07-30T11:00:10Z"
+              finished_at: null
+              restart_count: 0
+            image_reference_changed: true
+            image_content_changed: false
+            image_content_evidence: image_id
+        warnings: []
+      summary_variants:
+        exact_no_change:
+          comparability: exact
+          material_primary_kinds: []
+          material_human_kind_labels: []
+        degraded_no_change:
+          comparability: degraded
+          material_primary_kinds: []
+          material_human_kind_labels: []
+        degraded_material:
+          comparability: degraded
+          material_primary_kinds: [image_changed]
+          material_human_kind_labels: [ref changed]
+        no_baseline:
+          comparability: no_baseline
+          material_primary_kinds: []
+          material_human_kind_labels: []
+        incomplete:
+          comparability: incomplete
+          material_primary_kinds: []
+          material_human_kind_labels: []
+        incompatible_scope:
+          comparability: incompatible_scope
+          material_primary_kinds: []
+          material_human_kind_labels: []
+      summary_kind_label_inputs:
+        image_reference_only:
+          primary_kind: image_changed
+          image_reference_changed: true
+          image_content_changed: false
+        image_content_only:
+          primary_kind: image_changed
+          image_reference_changed: false
+          image_content_changed: true
+        image_reference_and_content:
+          primary_kind: image_changed
+          image_reference_changed: true
+          image_content_changed: true
+        recreated_without_image_change:
+          primary_kind: recreated
+          image_reference_changed: false
+          image_content_changed: false
+        recreated_reference_only:
+          primary_kind: recreated
+          image_reference_changed: true
+          image_content_changed: false
+        recreated_content_only:
+          primary_kind: recreated
+          image_reference_changed: false
+          image_content_changed: true
+        recreated_reference_and_content:
+          primary_kind: recreated
+          image_reference_changed: true
+          image_content_changed: true
+      multi_label_summary_changes:
+        - primary_kind: image_changed
+          image_reference_changed: true
+          image_content_changed: false
+        - primary_kind: recreated
+          image_reference_changed: true
+          image_content_changed: true
+        - primary_kind: image_changed
+          image_reference_changed: false
+          image_content_changed: true
+        - primary_kind: recreated
+          image_reference_changed: false
+          image_content_changed: false
+        - primary_kind: image_changed
+          image_reference_changed: true
+          image_content_changed: true
+        - primary_kind: recreated
+          image_reference_changed: true
+          image_content_changed: false
+        - primary_kind: recreated
+          image_reference_changed: false
+          image_content_changed: true
+    oracle:
+      exact_between_observation_summary:
+        comparability: exact
+        message: "Before run window: 1 observed difference (ref changed)"
+      exact_rendered_line: "Before run window: 1 observed difference (ref changed)"
+      run_window_notice: null
+      causal_attribution: false
+      exact_summary_kind_labels:
+        image_reference_only: ref changed
+        image_content_only: img changed
+        image_reference_and_content: img+ref changed
+        recreated_without_image_change: recreated
+        recreated_reference_only: recreated+ref
+        recreated_content_only: recreated+img
+        recreated_reference_and_content: recreated+img+ref
+      exact_summary_label_order:
+        - added
+        - removed
+        - recreated
+        - recreated+img
+        - recreated+ref
+        - recreated+img+ref
+        - img changed
+        - ref changed
+        - img+ref changed
+        - started
+        - stopped
+        - restarted
+        - state changed
+        - unchanged
+      exact_multi_label_summary: >-
+        Before run window: 7 observed differences (recreated, recreated+img,
+        recreated+ref, recreated+img+ref, img changed, ref changed, img+ref
+        changed)
+      exact_summary_matrix:
+        exact_no_change: null
+        degraded_no_change:
+          comparability: degraded
+          message: "Before run window: no observed difference; restart evidence incomplete"
+        degraded_material:
+          comparability: degraded
+          message: "Before run window: 1 observed difference (ref changed); restart evidence incomplete"
+        no_baseline:
+          comparability: no_baseline
+          message: "Before run window: no previous complete observation"
+        incomplete:
+          comparability: incomplete
+          message: "Before run window: comparison unavailable because one or both endpoints are incomplete"
+        incompatible_scope:
+          comparability: incompatible_scope
+          message: "Before run window: scopes are incompatible; no additions or removals inferred"
+
+  - id: degraded_run_window_notice_is_exact
+    input:
+      operation: post
+      observation_status: complete
+      run_window_delta:
+        comparability: degraded
+        changes:
+          - container_name: fixture-api
+            primary_kind: unchanged
+            kinds: [unchanged]
+        warnings: []
+    oracle:
+      primary_table_kind: run_window
+      run_window_table_retained: true
+      exact_run_window_notice:
+        comparability: degraded
+        message: "Run-window comparison degraded: restart evidence incomplete"
+      exact_rendered_line: "Run-window comparison degraded: restart evidence incomplete"
+      restarted_inferred: false
+      unchanged_row_retained: true
+
+  - id: unavailable_endpoint_renders_no_invented_rows
+    input:
+      operation: post
+      host: fixture-unavailable.example.com
+      instance_id: fixture-mdad
+      pre_status: complete
+      post_status: unavailable
+      report_width: 100
+      machine_result:
+        schema_version: 1
+        operation: post
+        instance_id: fixture-mdad
+        record_id: record-presentation-unavailable
+        observation_status: unavailable
+        observation:
+          observation_id: obs-presentation-unavailable-c
+          observed_at: "2026-07-30T12:20:02Z"
+          status: unavailable
+          scope:
+            patterns: ["fixture-*"]
+            identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+            comparison_schema_version: 1
+          discovery_backend: synthetic
+          metadata_gaps: [docker.catalogue]
+          reason_code: docker_daemon_unreachable
+          warnings: [Docker daemon was unreachable]
+          containers: null
+        scope_identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+        run_window_delta:
+          comparability: incomplete
+          comparison_schema_version: 1
+          from_observation_id: obs-presentation-unavailable-b
+          to_observation_id: obs-presentation-unavailable-c
+          changes: []
+          warnings: []
+        baseline:
+          advanced: false
+          before: obs-presentation-unavailable-a
+          after: obs-presentation-unavailable-a
+        baseline_advanced: false
+        journal_status: incomplete_post
+        persistence_outcome: committed
+        replay_outcome: null
+        simulated: false
+    oracle:
+      exact_report_model:
+        presentation_schema_version: 1
+        header:
+          host: fixture-unavailable.example.com
+          instance_id: fixture-mdad
+          operation: post
+          observed_at: "2026-07-30T12:20:02Z"
+          observation_status: unavailable
+          correlation_id: null
+          simulated: false
+          replay_outcome: null
+        primary_table:
+          kind: known_endpoint
+          columns: [CONTAINER, IMAGE, STATE]
+          rows: []
+        between_observation_summary: null
+        run_window_notice:
+          comparability: incomplete
+          message: "Run-window comparison unavailable"
+        counts:
+          known_rows: 0
+          rows_with_required_gaps: 0
+          authoritative_changes: 0
+        warnings:
+          - Docker daemon was unreachable
+          - "Observation unavailable: no container state observed; absence is not authoritative."
+        baseline_outcome:
+          advanced: false
+          before: obs-presentation-unavailable-a
+          after: obs-presentation-unavailable-a
+        journal_status: incomplete_post
+        persistence_outcome: committed
+      absence_markers_inferred: false
+      before_endpoint_rows_recast_as_removed: false
+      after_endpoint_rows_invented: false
+      table_blocks: 1
+      renderer_projection:
+        column_content_widths: [34, 46, 10]
+        separator_positions: [0, 37, 86, 99]
+      exact_ascii_rendered_block: |-
+        DAS v1 | host=fixture-unavailable.example.com | instance=fixture-mdad | operation=post
+        Observed 2026-07-30T12:20:02Z | status=unavailable
+        +------------------------------------+------------------------------------------------+------------+
+        | CONTAINER                          | IMAGE                                          | STATE      |
+        +------------------------------------+------------------------------------------------+------------+
+        +------------------------------------+------------------------------------------------+------------+
+        Run-window comparison unavailable
+        Counts: authoritative_changes=0, known_rows=0, rows_with_required_gaps=0
+        Baseline: unchanged (obs-presentation-unavailable-a -> obs-presentation-unavailable-a)
+        Journal: incomplete_post | Persistence: committed
+        Warnings: Docker daemon was unreachable
+          Observation unavailable: no container state observed; absence is not authoritative.
+
+  - id: status_uses_current_state_columns
+    input:
+      operation: status
+      observation_status: complete
+      current_names: [fixture-api]
+    oracle:
+      primary_table_kind: current
+      columns: [CONTAINER, IMAGE, STATE]
+      before_column_present: false
+      after_column_present: false
+      current_row_count: 1
+      table_blocks: 1
+
+  - id: baseline_null_endpoint_rendering_is_exact
+    input:
+      variants:
+        not_applicable: null
+        uninitialized_pre:
+          advanced: false
+          before: null
+          after: null
+        first_complete_post:
+          advanced: true
+          before: null
+          after: obs-first-complete-post
+    oracle:
+      exact_lines:
+        not_applicable: "Baseline: not applicable"
+        uninitialized_pre: "Baseline: unchanged (<none> -> <none>)"
+        first_complete_post: >-
+          Baseline: advanced (<none> -> obs-first-complete-post)
+      null_endpoint_token: "<none>"
+      implementation_language_null_tokens_forbidden: true
+
+  - id: table_selection_and_footer_matrix_is_exact
+    input:
+      variants:
+        each_complete_pre:
+          operation: pre
+          report_mode: each
+          observed_at: "2026-07-30T12:40:00Z"
+          observation_status: complete
+          pairing_state: pre
+          run_window_comparability: null
+          simulated: false
+          replay_outcome: null
+          known_rows: 1
+          rows_with_required_gaps: 0
+          baseline_outcome:
+            advanced: false
+            before: obs-matrix-a
+            after: obs-matrix-a
+          journal_status: open
+          persistence_outcome: committed
+          warnings: []
+        complete_status:
+          operation: status
+          report_mode: final
+          observed_at: "2026-07-30T12:40:01Z"
+          observation_status: complete
+          pairing_state: status
+          run_window_comparability: null
+          simulated: false
+          replay_outcome: null
+          known_rows: 1
+          rows_with_required_gaps: 0
+          baseline_outcome: null
+          journal_status: null
+          persistence_outcome: not_attempted
+          warnings: []
+        scope_mismatched_post:
+          operation: post
+          report_mode: final
+          observed_at: "2026-07-30T12:40:02Z"
+          observation_status: complete
+          pairing_state: matched_post
+          run_window_comparability: incompatible_scope
+          simulated: false
+          replay_outcome: null
+          known_rows: 1
+          rows_with_required_gaps: 0
+          baseline_outcome:
+            advanced: true
+            before: obs-matrix-a
+            after: obs-matrix-c
+          journal_status: scope_mismatch
+          persistence_outcome: committed
+          warnings: []
+        post_only_complete:
+          operation: post
+          report_mode: final
+          observed_at: "2026-07-30T12:40:03Z"
+          observation_status: complete
+          pairing_state: post_only
+          run_window_comparability: null
+          simulated: false
+          replay_outcome: null
+          known_rows: 1
+          rows_with_required_gaps: 0
+          baseline_outcome:
+            advanced: true
+            before: obs-matrix-a
+            after: obs-matrix-post-only
+          journal_status: incomplete_pre
+          persistence_outcome: committed
+          warnings: []
+        check_post_complete:
+          operation: post
+          report_mode: final
+          observed_at: "2026-07-30T12:40:04Z"
+          observation_status: complete
+          pairing_state: simulation
+          run_window_comparability: null
+          simulated: true
+          replay_outcome: null
+          known_rows: 1
+          rows_with_required_gaps: 0
+          baseline_outcome: null
+          journal_status: null
+          persistence_outcome: not_attempted
+          warnings: []
+    oracle:
+      exact_projections:
+        each_complete_pre:
+          primary_table_kind: current
+          exact_columns: [CONTAINER, IMAGE, STATE]
+          exact_observed_line: "Observed 2026-07-30T12:40:00Z | status=complete"
+          counts:
+            authoritative_changes: 0
+            known_rows: 1
+            rows_with_required_gaps: 0
+          run_window_notice: null
+          exact_footer_lines:
+            - "Counts: authoritative_changes=0, known_rows=1, rows_with_required_gaps=0"
+            - "Baseline: unchanged (obs-matrix-a -> obs-matrix-a)"
+            - "Journal: open | Persistence: committed"
+            - "Warnings: none"
+        complete_status:
+          primary_table_kind: current
+          exact_columns: [CONTAINER, IMAGE, STATE]
+          exact_observed_line: "Observed 2026-07-30T12:40:01Z | status=complete"
+          counts:
+            authoritative_changes: 0
+            known_rows: 1
+            rows_with_required_gaps: 0
+          run_window_notice: null
+          exact_footer_lines:
+            - "Counts: authoritative_changes=0, known_rows=1, rows_with_required_gaps=0"
+            - "Baseline: not applicable"
+            - "Journal: not applicable | Persistence: not_attempted"
+            - "Warnings: none"
+        scope_mismatched_post:
+          primary_table_kind: current
+          exact_columns: [CONTAINER, IMAGE, STATE]
+          exact_observed_line: "Observed 2026-07-30T12:40:02Z | status=complete"
+          counts:
+            authoritative_changes: 0
+            known_rows: 1
+            rows_with_required_gaps: 0
+          run_window_notice:
+            comparability: incompatible_scope
+            message: "Scopes are incompatible; no additions or removals inferred"
+          exact_footer_lines:
+            - "Counts: authoritative_changes=0, known_rows=1, rows_with_required_gaps=0"
+            - "Baseline: advanced (obs-matrix-a -> obs-matrix-c)"
+            - "Journal: scope_mismatch | Persistence: committed"
+            - "Warnings: none"
+        post_only_complete:
+          primary_table_kind: current
+          exact_columns: [CONTAINER, IMAGE, STATE]
+          exact_observed_line: "Observed 2026-07-30T12:40:03Z | status=complete"
+          counts:
+            authoritative_changes: 0
+            known_rows: 1
+            rows_with_required_gaps: 0
+          run_window_notice:
+            comparability: incomplete
+            message: "Run-window comparison unavailable: no pre-observation was recorded"
+          exact_footer_lines:
+            - "Counts: authoritative_changes=0, known_rows=1, rows_with_required_gaps=0"
+            - "Baseline: advanced (obs-matrix-a -> obs-matrix-post-only)"
+            - "Journal: incomplete_pre | Persistence: committed"
+            - "Warnings: none"
+        check_post_complete:
+          primary_table_kind: current
+          exact_columns: [CONTAINER, IMAGE, STATE]
+          exact_observed_line: "Observed 2026-07-30T12:40:04Z | status=complete | mode=simulation"
+          counts:
+            authoritative_changes: 0
+            known_rows: 1
+            rows_with_required_gaps: 0
+          run_window_notice:
+            comparability: incomplete
+            message: "Run-window comparison unavailable: check-mode simulation does not read retained state"
+          exact_footer_lines:
+            - "Counts: authoritative_changes=0, known_rows=1, rows_with_required_gaps=0"
+            - "Baseline: not applicable"
+            - "Journal: not applicable | Persistence: not_attempted"
+            - "Warnings: none"
+
+  - id: header_truthfulness_annotations_are_exact
+    input:
+      host: fixture-header.example.com
+      instance_id: fixture-mdad
+      operation: post
+      observed_at: "2026-07-30T12:45:00Z"
+      observation_status: complete
+      correlation_id: null
+      variants:
+        normal:
+          simulated: false
+          replay_outcome: null
+        simulation:
+          simulated: true
+          replay_outcome: null
+        retained_replay:
+          simulated: false
+          replay_outcome: idempotent
+    oracle:
+      exact_headers:
+        normal:
+          host: fixture-header.example.com
+          instance_id: fixture-mdad
+          operation: post
+          observed_at: "2026-07-30T12:45:00Z"
+          observation_status: complete
+          correlation_id: null
+          simulated: false
+          replay_outcome: null
+        simulation:
+          host: fixture-header.example.com
+          instance_id: fixture-mdad
+          operation: post
+          observed_at: "2026-07-30T12:45:00Z"
+          observation_status: complete
+          correlation_id: null
+          simulated: true
+          replay_outcome: null
+        retained_replay:
+          host: fixture-header.example.com
+          instance_id: fixture-mdad
+          operation: post
+          observed_at: "2026-07-30T12:45:00Z"
+          observation_status: complete
+          correlation_id: null
+          simulated: false
+          replay_outcome: idempotent
+      exact_observed_lines:
+        normal: "Observed 2026-07-30T12:45:00Z | status=complete"
+        simulation: "Observed 2026-07-30T12:45:00Z | status=complete | mode=simulation"
+        retained_replay: "Observed 2026-07-30T12:45:00Z | status=complete | replay=idempotent"
+
+  - id: semantic_missing_tokens_are_distinct
+    input:
+      semantic_states:
+        absent: null
+        endpoint_not_observed: null
+        field_unknown: null
+        no_explicit_tag: registry.example.com/team/cache
+    oracle:
+      rendered_tokens:
+        absent: "<absent>"
+        endpoint_not_observed: "<not observed>"
+        field_unknown: "<unknown>"
+        no_explicit_tag: "<no explicit tag>"
+      tokens_are_pairwise_distinct: true
+      blank_cell_forbidden: true
+      hyphen_only_cell_forbidden: true
+
+  - id: visible_escape_is_exact_utf8_byte_projection
+    input:
+      value: |-
+        A\|~#<> é
+        Z
+    oracle:
+      exact_escaped_value: 'A\x5c\x7c\x7e\x23\x3c\x3e \xc3\xa9\x0aZ'
+      hex_case: lowercase
+      reserved_ascii_bytes: ["\\", "|", "~", "#", "<", ">"]
+      printable_unreserved_ascii_preserved: true
+      utf8_encoded_before_escaping: true
+      round_trip_claimed: false
+
+  - id: container_shortening_and_collision_are_exact
+    input:
+      single:
+        width: 26
+        name: fixture-service-with-a-deliberately-long-name-0123456789
+      collision_group:
+        width: 16
+        names:
+          - abcdef-one-unique-common-tail
+          - abcdef-two-unique-common-tail
+        permuted_order:
+          - abcdef-two-unique-common-tail
+          - abcdef-one-unique-common-tail
+    oracle:
+      split_rule: tail_weighted_two_fifths_three_fifths
+      elision_marker: "~"
+      single:
+        left_characters: 10
+        right_characters: 15
+        exact_label: "fixture-se~name-0123456789"
+      collision_group:
+        initial_exact_label: "abcdef~mmon-tail"
+        hash_algorithm: sha256
+        hash_input: ascii_full_normalized_container_name
+        hash_prefix_length: 4
+        reduced_readable_width: 11
+        reduced_exact_label: "abcd~n-tail"
+        exact_labels:
+          abcdef-one-unique-common-tail: "abcd~n-tail#dc81"
+          abcdef-two-unique-common-tail: "abcd~n-tail#7146"
+        stable_under_input_permutation: true
+      full_machine_names_truncated: false
+
+  - id: change_vocabulary_is_closed_and_bounded
+    input:
+      changes:
+        - id: added
+          primary_kind: added
+          kinds: [added]
+        - id: removed
+          primary_kind: removed
+          kinds: [removed]
+        - id: recreated_only
+          primary_kind: recreated
+          kinds: [recreated]
+        - id: recreated_content
+          primary_kind: recreated
+          kinds: [recreated, image_changed]
+          image_reference_changed: false
+          image_content_changed: true
+        - id: recreated_reference
+          primary_kind: recreated
+          kinds: [recreated, image_changed]
+          image_reference_changed: true
+          image_content_changed: false
+        - id: recreated_both_with_runtime_secondary
+          primary_kind: recreated
+          kinds: [recreated, image_changed, started]
+          image_reference_changed: true
+          image_content_changed: true
+        - id: image_content
+          primary_kind: image_changed
+          kinds: [image_changed]
+          image_reference_changed: false
+          image_content_changed: true
+        - id: image_reference
+          primary_kind: image_changed
+          kinds: [image_changed]
+          image_reference_changed: true
+          image_content_changed: false
+        - id: image_both_with_runtime_secondary
+          primary_kind: image_changed
+          kinds: [image_changed, restarted]
+          image_reference_changed: true
+          image_content_changed: true
+        - id: started
+          primary_kind: started
+          kinds: [started]
+        - id: stopped
+          primary_kind: stopped
+          kinds: [stopped]
+        - id: restarted
+          primary_kind: restarted
+          kinds: [restarted]
+        - id: state_changed
+          primary_kind: state_changed
+          kinds: [state_changed]
+        - id: unchanged
+          primary_kind: unchanged
+          kinds: [unchanged]
+    oracle:
+      exact_labels:
+        added: added
+        removed: removed
+        recreated_only: recreated
+        recreated_content: recreated+img
+        recreated_reference: recreated+ref
+        recreated_both_with_runtime_secondary: recreated+img+ref
+        image_content: img changed
+        image_reference: ref changed
+        image_both_with_runtime_secondary: img+ref changed
+        started: started
+        stopped: stopped
+        restarted: restarted
+        state_changed: "state changed"
+        unchanged: unchanged
+      maximum_label_width: 17
+      vocabulary_exhaustive_for_v1: true
+      runtime_secondary_suffixes_appended: false
+      complete_machine_kinds_preserved: true
+
+  - id: same_tag_new_image_id_projects_distinct_row
+    input:
+      report_width: 160
+      canonical_result:
+        schema_version: 1
+        operation: post
+        instance_id: fixture-mdad
+        observation_status: complete
+        run_window_delta:
+          comparability: exact
+          changes:
+            - container_name: fixture-api
+              primary_kind: image_changed
+              kinds: [image_changed]
+              image_reference_changed: false
+              image_content_changed: true
+              before: &same_tag_before
+                name: fixture-api
+                container_id: "00000000000000000000000000000000000000000000000000000000000000d1"
+                full_image_reference: registry.example.com/team/api:stable
+                image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+                runtime_state: running
+                created_at: "2026-07-30T09:00:00Z"
+                started_at: "2026-07-30T09:00:10Z"
+                finished_at: null
+                restart_count: 0
+              after: &same_tag_after
+                name: fixture-api
+                container_id: "00000000000000000000000000000000000000000000000000000000000000d1"
+                full_image_reference: registry.example.com/team/api:stable
+                image_id: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+                runtime_state: running
+                created_at: "2026-07-30T09:00:00Z"
+                started_at: "2026-07-30T09:00:10Z"
+                finished_at: null
+                restart_count: 0
+          warnings: []
+    oracle:
+      canonical_change:
+        primary_kind: image_changed
+        kinds: [image_changed]
+        image_reference_changed: false
+        image_content_changed: true
+      image_id_prefix_length: 7
+      image_id_separator: "@"
+      exact_report_model_row:
+        container_name: fixture-api
+        machine_before: *same_tag_before
+        machine_after: *same_tag_after
+        cells:
+          container: fixture-api
+          before: "api:stable@1111111 / running"
+          after: "api:stable@2222222 / running"
+          change: "img changed"
+      exact_rendered_logical_row: >-
+        fixture-api | api:stable@1111111 / running |
+        api:stable@2222222 / running | img changed
+      endpoint_cells_visibly_distinct: true
+      projection_changed_canonical_facets: false
+
+  - id: repository_change_equal_image_id_projects_distinct_row
+    input:
+      report_width: 160
+      canonical_result:
+        schema_version: 1
+        operation: post
+        instance_id: fixture-mdad
+        observation_status: complete
+        run_window_delta:
+          comparability: exact
+          changes:
+            - container_name: fixture-api
+              primary_kind: image_changed
+              kinds: [image_changed]
+              image_reference_changed: true
+              image_content_changed: false
+              before: &repository_change_before
+                name: fixture-api
+                container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+                full_image_reference: r1.example/team/api:v1
+                image_id: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+                runtime_state: running
+                created_at: "2026-07-30T09:00:00Z"
+                started_at: "2026-07-30T09:00:10Z"
+                finished_at: null
+                restart_count: 0
+              after: &repository_change_after
+                name: fixture-api
+                container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+                full_image_reference: r2.example/other/api:v1
+                image_id: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+                runtime_state: running
+                created_at: "2026-07-30T09:00:00Z"
+                started_at: "2026-07-30T09:00:10Z"
+                finished_at: null
+                restart_count: 0
+          warnings: []
+    oracle:
+      canonical_change:
+        primary_kind: image_changed
+        kinds: [image_changed]
+        image_reference_changed: true
+        image_content_changed: false
+      initial_endpoint_labels: [api:v1, api:v1]
+      exact_report_model_row:
+        container_name: fixture-api
+        machine_before: *repository_change_before
+        machine_after: *repository_change_after
+        cells:
+          container: fixture-api
+          before: "r1.example/team/api:v1 / running"
+          after: "r2.example/other/api:v1 / running"
+          change: "ref changed"
+      exact_rendered_logical_row: >-
+        fixture-api | r1.example/team/api:v1 / running |
+        r2.example/other/api:v1 / running |
+        ref changed
+      endpoint_cells_visibly_distinct: true
+      projection_changed_canonical_facets: false
+
+  - id: tag_digest_change_equal_image_id_projects_distinct_row
+    input:
+      report_width: 160
+      canonical_result:
+        schema_version: 1
+        operation: post
+        instance_id: fixture-mdad
+        observation_status: complete
+        run_window_delta:
+          comparability: exact
+          changes:
+            - container_name: fixture-api
+              primary_kind: image_changed
+              kinds: [image_changed]
+              image_reference_changed: true
+              image_content_changed: false
+              before: &tag_digest_change_before
+                name: fixture-api
+                container_id: "00000000000000000000000000000000000000000000000000000000000000d3"
+                full_image_reference: "registry.example.com/team/api:v2@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                image_id: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+                runtime_state: running
+                created_at: "2026-07-30T09:00:00Z"
+                started_at: "2026-07-30T09:00:10Z"
+                finished_at: null
+                restart_count: 0
+              after: &tag_digest_change_after
+                name: fixture-api
+                container_id: "00000000000000000000000000000000000000000000000000000000000000d3"
+                full_image_reference: "registry.example.com/team/api:v2@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+                image_id: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+                runtime_state: running
+                created_at: "2026-07-30T09:00:00Z"
+                started_at: "2026-07-30T09:00:10Z"
+                finished_at: null
+                restart_count: 0
+          warnings: []
+    oracle:
+      canonical_change:
+        primary_kind: image_changed
+        kinds: [image_changed]
+        image_reference_changed: true
+        image_content_changed: false
+      exact_report_model_row:
+        container_name: fixture-api
+        machine_before: *tag_digest_change_before
+        machine_after: *tag_digest_change_after
+        cells:
+          container: fixture-api
+          before: "api:v2@sha256:aaaaaaaaaaaa / running"
+          after: "api:v2@sha256:bbbbbbbbbbbb / running"
+          change: "ref changed"
+      exact_rendered_logical_row: >-
+        fixture-api | api:v2@sha256:aaaaaaaaaaaa / running |
+        api:v2@sha256:bbbbbbbbbbbb / running |
+        ref changed
+      endpoint_cells_visibly_distinct: true
+      projection_changed_canonical_facets: false
+
+  - id: callback_transport_is_atomic_and_unescaped
+    input:
+      callbacks:
+        - name: ansible.builtin.default
+          result_format: yaml
+        - name: ansible.builtin.default
+          result_format: json
+      color_modes: ["off", "on"]
+      hosts:
+        - fixture-a.example.com
+        - fixture-b.example.com
+      forks: 2
+      strategy: linear
+      verbosity: normal
+      host_payloads:
+        fixture-a.example.com:
+          begin_sentinel: "<<<capture:fixture-a.example.com:begin>>>"
+          unique_row_token: fixture-a-only
+          end_sentinel: "<<<capture:fixture-a.example.com:end>>>"
+          expected_display_block: &callback_block_a |-
+            DAS v1 | host=fixture-a.example.com | operation=status
+            +----------------+----------+---------+
+            | CONTAINER      | IMAGE    | STATE   |
+            +----------------+----------+---------+
+            | fixture-a-only | api-a:v1 | running |
+            +----------------+----------+---------+
+        fixture-b.example.com:
+          begin_sentinel: "<<<capture:fixture-b.example.com:begin>>>"
+          unique_row_token: fixture-b-only
+          end_sentinel: "<<<capture:fixture-b.example.com:end>>>"
+          expected_display_block: &callback_block_b |-
+            DAS v1 | host=fixture-b.example.com | operation=status
+            +----------------+----------+---------+
+            | CONTAINER      | IMAGE    | STATE   |
+            +----------------+----------+---------+
+            | fixture-b-only | api-b:v1 | running |
+            +----------------+----------+---------+
+    oracle:
+      one_display_call_per_host_block: true
+      host_header_required: true
+      quoted_block_forbidden: true
+      literal_backslash_n_forbidden: true
+      indented_border_forbidden: true
+      duplicate_block_forbidden: true
+      row_interleaving_within_host_block_forbidden: true
+      cross_host_atomic_snapshot_claim: false
+      expected_contiguous_captures:
+        fixture-a.example.com:
+          begin_sentinel: "<<<capture:fixture-a.example.com:begin>>>"
+          exact_payload_between_sentinels: *callback_block_a
+          end_sentinel: "<<<capture:fixture-a.example.com:end>>>"
+          forbidden_foreign_unique_tokens: [fixture-b-only]
+        fixture-b.example.com:
+          begin_sentinel: "<<<capture:fixture-b.example.com:begin>>>"
+          exact_payload_between_sentinels: *callback_block_b
+          end_sentinel: "<<<capture:fixture-b.example.com:end>>>"
+          forbidden_foreign_unique_tokens: [fixture-a-only]
+      transcript_invariants:
+        each_begin_sentinel_count: 1
+        each_end_sentinel_count: 1
+        each_exact_host_block_count: 1
+        host_block_bytes_contiguous: true
+        host_unique_token_confined_to_own_block: true
+        whole_host_block_order_may_vary: true
+        line_or_row_level_interleaving_forbidden: true
+      table_bytes_by_controller_color_mode:
+        "off":
+          ansi_sequences_present: false
+        "on":
+          ansi_sequences_present: false
+      exact_table_bytes_equal_across_controller_color_modes: true
+      built_in_json_result_format_is_machine_stdout_api: false
+      structured_stdout_callbacks_supported_for_human_mode: false
+
+  - id: structured_stdout_callback_is_not_human_report_transport
+    input:
+      callback: ansible.posix.json
+      strategy: linear
+      report_mode: final
+      raw_display_block_present: true
+      whole_stdout_valid_json: false
+      none_mode_probe:
+        deliberate_human_block_present: false
+        machine_valid_structured_stdout_promised: false
+    oracle:
+      human_report_lane_supported: false
+      rejection_or_documented_incompatibility_required: true
+      registered_namespaced_result_is_machine_integration_surface: true
+      callback_owned_result_serialization_is_not_das_api: true
+      future_explicit_structured_transport_required: true
+
+  - id: failed_callback_uses_bounded_envelope
+    input:
+      callbacks:
+        - name: ansible.builtin.default
+          result_format: yaml
+        - name: ansible.builtin.default
+          result_format: json
+      color_modes: ["off", "on"]
+      strategy: linear
+      host_projection_probe:
+        raw_host_recipe:
+          character: x
+          repeat: 300
+        expected_projected_host: "sha256:0d4e2ca9e9cbced7a7a5380eb29e1a3783b9b6d0db72de36a1051038e1c1fbc7"
+      invalid_input_diagnostic_probe:
+        rejected_report_width: "not-an-integer"
+        effective_wrap_width: 120
+        rejected_overlong_instance_recipe:
+          character: x
+          repeat: 4096
+        failure_envelope_instance_id: null
+        diagnostic_includes_input_value: false
+      persistence_failure_stage_by_outcome:
+        persistence_io_failure: before_atomic_replace
+        post_replace_state_write_failure: after_atomic_replace_before_directory_fsync
+      failure_results:
+        fail_after_report:
+          changed: false
+          failed: true
+          docker_ansible_summary_failure:
+            schema_version: 1
+            host: fixture-a.example.com
+            instance_id: fixture-mdad
+            operation: post
+            record_id: record-failure-callback-01
+            observation_status: unavailable
+            failure_reason: observation_noncomplete
+            observation_reason: docker_command_timeout
+            persistence_outcome: committed
+            committed_result_replayable: true
+            replay_guidance: "Retry the retained record with failure_policy=report"
+        validation_failure:
+          changed: false
+          failed: true
+          docker_ansible_summary_failure:
+            schema_version: 1
+            host: fixture-a.example.com
+            instance_id: null
+            operation: null
+            record_id: null
+            observation_status: null
+            failure_reason: invalid_input
+            observation_reason: null
+            persistence_outcome: not_attempted
+            committed_result_replayable: false
+            replay_guidance: null
+        state_size_failure:
+          changed: false
+          failed: true
+          docker_ansible_summary_failure:
+            schema_version: 1
+            host: fixture-a.example.com
+            instance_id: fixture-mdad
+            operation: post
+            record_id: record-failure-callback-02
+            observation_status: complete
+            failure_reason: state_size_limit_exceeded
+            observation_reason: null
+            persistence_outcome: failed
+            committed_result_replayable: false
+            replay_guidance: null
+        corrupt_state_failure:
+          changed: false
+          failed: true
+          docker_ansible_summary_failure:
+            schema_version: 1
+            host: fixture-a.example.com
+            instance_id: fixture-mdad
+            operation: pre
+            record_id: record-failure-callback-corrupt
+            observation_status: null
+            failure_reason: corrupt_state
+            observation_reason: null
+            persistence_outcome: failed
+            committed_result_replayable: false
+            replay_guidance: null
+        lock_timeout_failure:
+          changed: false
+          failed: true
+          docker_ansible_summary_failure:
+            schema_version: 1
+            host: fixture-a.example.com
+            instance_id: fixture-mdad
+            operation: pre
+            record_id: record-failure-callback-lock
+            observation_status: null
+            failure_reason: state_lock_timeout
+            observation_reason: null
+            persistence_outcome: failed
+            committed_result_replayable: false
+            replay_guidance: null
+        revision_conflict:
+          changed: false
+          failed: true
+          docker_ansible_summary_failure:
+            schema_version: 1
+            host: fixture-a.example.com
+            instance_id: fixture-mdad
+            operation: post
+            record_id: record-failure-callback-03
+            observation_status: complete
+            failure_reason: revision_conflict
+            observation_reason: null
+            persistence_outcome: conflict
+            committed_result_replayable: false
+            replay_guidance: null
+        persistence_io_failure:
+          changed: false
+          failed: true
+          docker_ansible_summary_failure:
+            schema_version: 1
+            host: fixture-a.example.com
+            instance_id: fixture-mdad
+            operation: post
+            record_id: record-failure-callback-04
+            observation_status: complete
+            failure_reason: state_write_failed
+            observation_reason: null
+            persistence_outcome: failed
+            committed_result_replayable: false
+            replay_guidance: null
+        post_replace_state_write_failure:
+          changed: false
+          failed: true
+          docker_ansible_summary_failure:
+            schema_version: 1
+            host: fixture-a.example.com
+            instance_id: fixture-mdad
+            operation: pre
+            record_id: caller-known-after-replace-001
+            observation_status: complete
+            failure_reason: state_write_failed
+            observation_reason: null
+            persistence_outcome: failed
+            committed_result_replayable: false
+            replay_guidance: "Retry with the same record_id and unchanged phase inputs"
+        render_failure_after_commit:
+          changed: false
+          failed: true
+          docker_ansible_summary_failure:
+            schema_version: 1
+            host: fixture-a.example.com
+            instance_id: fixture-mdad
+            operation: post
+            record_id: record-failure-callback-05
+            observation_status: complete
+            failure_reason: render_failed
+            observation_reason: null
+            persistence_outcome: committed
+            committed_result_replayable: true
+            replay_guidance: "Retry the retained record with report_mode=none"
+        presentation_capacity_after_commit:
+          changed: false
+          failed: true
+          docker_ansible_summary_failure:
+            schema_version: 1
+            host: fixture-a.example.com
+            instance_id: fixture-mdad
+            operation: post
+            record_id: record-failure-callback-06
+            observation_status: complete
+            failure_reason: presentation_capacity_exceeded
+            observation_reason: null
+            persistence_outcome: committed
+            committed_result_replayable: true
+            replay_guidance: "Retry the retained record with report_mode=none"
+    oracle:
+      required_failure_outcomes:
+        - fail_after_report
+        - validation_failure
+        - state_size_failure
+        - corrupt_state_failure
+        - lock_timeout_failure
+        - revision_conflict
+        - persistence_io_failure
+        - post_replace_state_write_failure
+        - render_failure_after_commit
+        - presentation_capacity_after_commit
+      maximum_serialized_task_result_bytes: 1024
+      serialized_bound_scope: compact_canonical_json_entire_task_result
+      exact_host_utf8_bytes_max: 128
+      overlong_or_non_ascii_host_projection: sha256_full_lowercase_hex
+      replay_guidance_utf8_bytes_max: 128
+      invalid_report_width_fallback: 120
+      invalid_or_unvalidated_envelope_fields_are_null: true
+      exact_namespaced_failure_key: docker_ansible_summary_failure
+      forbidden_recursive_keys:
+        - docker_ansible_summary_result
+        - observation
+        - containers
+        - changes
+        - stdout
+        - stderr
+        - invocation
+      no_log_censorship_used: false
+      object_proportional_result_dumped: false
+      one_terminal_failure_event_per_case: true
+      captured_callback_snapshot_required_per_format_and_color: true
+      callback_owned_formatting_may_differ: true
+      full_committed_result_recovered_by_reason_specific_replay: true
+
+  - id: ascii_layout_is_deterministic_and_aligned
+    input:
+      fixture_layer: internal_warning_layout_unit
+      role_generated_templates_applied: false
+      presentation_schema_version: 1
+      style: ascii
+      color: false
+      report_width: 100
+      observed_at: "2026-07-30T12:30:02Z"
+      observation_status: complete
+      baseline_before: obs-layout-a
+      baseline_after: obs-layout-c
+      journal_status: complete
+      persistence_outcome: committed
+      row_values:
+        - [fixture-api, "api:v1 / running", "api:v2 / running", "img+ref changed"]
+        - [fixture-cache, "cache:v1 / stopped", "cache:v1 / running", started]
+      long_metadata_fields:
+        header:
+          - DAS v1
+          - "host=fixture-host-with-a-deliberately-long-but-valid-name-0123456789.example.com"
+          - "instance=fixture-instance-with-a-deliberately-long-name-0123456789"
+          - operation=post
+        warnings:
+          - unsupported_image_reference_form
+          - reason=opaque_reference
+      overlong_warning_field:
+        prefix: details=
+        character: x
+        repeat: 120
+    oracle:
+      exact_minimum_width_rendered_block: |-
+        DAS v1 | host=fixture-host-with-a-deliberately-long-but-valid-name-0123456789.example.com
+          instance=fixture-instance-with-a-deliberately-long-name-0123456789 | operation=post
+        Observed 2026-07-30T12:30:02Z | status=complete
+        +----------------------------+------------------------+------------------------+-------------------+
+        | CONTAINER                  | BEFORE                 | AFTER                  | CHANGE            |
+        +----------------------------+------------------------+------------------------+-------------------+
+        | fixture-api                | api:v1 / running       | api:v2 / running       | img+ref changed   |
+        | fixture-cache              | cache:v1 / stopped     | cache:v1 / running     | started           |
+        +----------------------------+------------------------+------------------------+-------------------+
+        Counts: image_changed=1, started=1, total=2
+        Baseline: advanced (obs-layout-a -> obs-layout-c)
+        Journal: complete | Persistence: committed
+        Warnings: unsupported_image_reference_form
+          reason=opaque_reference
+          details=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      exact_wrapped_metadata_lines:
+        header:
+          - "DAS v1 | host=fixture-host-with-a-deliberately-long-but-valid-name-0123456789.example.com"
+          - "  instance=fixture-instance-with-a-deliberately-long-name-0123456789 | operation=post"
+        warnings:
+          - "Warnings: unsupported_image_reference_form"
+          - "  reason=opaque_reference"
+          - "  details=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          - "  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      column_content_widths: [26, 22, 22, 17]
+      separator_positions: [0, 29, 54, 79, 99]
+      exact_container_labels:
+        fixture-api: fixture-api
+        fixture-cache: fixture-cache
+      opaque_markers: []
+      legend_entries: []
+      one_physical_line_per_row: true
+      separator_positions_equal: true
+      maximum_line_width: 100
+      control_characters_present: false
+      ansi_sequences_present: false
+      deterministic_ordering: true

@@ -1,0 +1,1227 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+fixture_family: focused_cases
+topic: persistence
+description: >-
+  Store-level cases supplementing the stale-writer transition in numbered
+  scenario 21. Hashes and records are wholly synthetic.
+
+cases:
+  - id: state_root_lexical_contract
+    accepted:
+      - /var/lib/docker-ansible-summary
+      - /srv/das-state
+    rejected:
+      - value: var/lib/docker-ansible-summary
+        reason: not_absolute
+      - value: /
+        reason: filesystem_root_forbidden
+      - value: /var/lib/../lib/docker-ansible-summary
+        reason: parent_component
+      - value: /var/lib/./docker-ansible-summary
+        reason: current_component
+      - value: /var//lib/docker-ansible-summary
+        reason: repeated_separator
+      - value: /var/lib/docker-ansible-summary/
+        reason: trailing_separator
+      - value: "/var/lib/docker-ansible-summary\0suffix"
+        reason: nul
+    oracle:
+      persistence_outcome: not_attempted
+      accepted_count: 2
+      rejected_count: 7
+      rejected_failure_reason: invalid_input
+      filesystem_access_for_rejected: false
+      docker_discovery_for_rejected: false
+
+  - id: instance_id_namespace_grammar
+    accepted:
+      - mdad
+      - mash-primary_2
+      - recipe: lowercase_a_followed_by_62_lowercase_b
+        utf8_bytes: 63
+    rejected:
+      - {value: "", reason: empty}
+      - {value: MDAD, reason: uppercase}
+      - {value: .mdad, reason: invalid_first_character}
+      - {value: mdad.example, reason: dot}
+      - {value: mdad/example, reason: separator}
+      - {value: ../mdad, reason: traversal_syntax}
+      - {value: "mdad instance", reason: whitespace}
+      - recipe: lowercase_a_followed_by_63_lowercase_b
+        utf8_bytes: 64
+        reason: too_long
+    oracle:
+      persistence_outcome: not_attempted
+      grammar: "[a-z0-9][a-z0-9_-]{0,62}"
+      accepted_count: 3
+      rejected_count: 8
+      rejected_failure_reason: invalid_input
+      filesystem_access_for_rejected: false
+      docker_discovery_for_rejected: false
+
+  - id: secure_posix_namespace_is_accepted
+    platform_contract:
+      local_posix_filesystem: true
+      descriptor_relative_open: true
+      no_follow: true
+      advisory_flock: true
+      regular_file_fsync: true
+      directory_fsync: true
+      atomic_same_directory_replace: true
+    effective_uid: 4242
+    state_root_input: /srv/docker-ansible-summary
+    instance_id: fixture-mdad
+    trusted_ancestor_policy:
+      ordinary:
+        accepted_owner_uids: [0, 4242]
+        group_or_other_writable: false
+      root_owned_sticky:
+        representative_path: /tmp
+        uid: 0
+        mode: "1777"
+        accepted: true
+    synthetic_namespace:
+      traversal_from_root:
+        - path: /srv
+          type: directory
+          uid: 0
+          mode: "0755"
+          symlink: false
+          name_and_descriptor_identity_match: true
+        - path: /srv/docker-ansible-summary
+          type: directory
+          uid: 4242
+          mode: "0700"
+          symlink: false
+          name_and_descriptor_identity_match: true
+      role_owned_objects:
+        - path: /srv/docker-ansible-summary
+          type: directory
+          uid: 4242
+          mode: "0700"
+          symlink: false
+          name_and_descriptor_identity_match: true
+        - path: /srv/docker-ansible-summary/fixture-mdad
+          type: directory
+          uid: 4242
+          mode: "0700"
+          symlink: false
+          name_and_descriptor_identity_match: true
+        - path: /srv/docker-ansible-summary/fixture-mdad/state.json
+          type: regular_file
+          uid: 4242
+          mode: "0600"
+          link_count: 1
+          symlink: false
+          name_and_descriptor_identity_match: true
+        - path: /srv/docker-ansible-summary/fixture-mdad/state.lock
+          type: regular_file
+          uid: 4242
+          mode: "0600"
+          link_count: 1
+          symlink: false
+          name_and_descriptor_identity_match: true
+    oracle:
+      persistence_outcome: not_attempted
+      namespace_accepted: true
+      canonical_path: /srv/docker-ansible-summary/fixture-mdad/state.json
+      stable_lock_path: /srv/docker-ansible-summary/fixture-mdad/state.lock
+      state_root_mode: "0700"
+      instance_directory_mode: "0700"
+      regular_file_mode: "0600"
+      owner_is_effective_uid: true
+      root_owned_sticky_ancestor_accepted: true
+
+  - id: unsafe_preexisting_namespace_fails_closed
+    effective_uid: 4242
+    otherwise_valid_state_root: /srv/docker-ansible-summary
+    variants:
+      - id: symlinked_ancestor
+        object: /srv
+        violation: symlink
+      - id: missing_ancestor
+        object: /srv
+        violation: missing
+      - id: untrusted_ancestor_owner
+        object: /srv
+        violation: {uid: 4200, expected_uids: [0, 4242]}
+      - id: world_writable_nonsticky_ancestor
+        object: /srv
+        violation:
+          uid: 0
+          mode: "0777"
+          sticky: false
+          forbidden_write_bits: "0022"
+      - id: symlinked_state_root
+        object: /srv/docker-ansible-summary
+        violation: symlink
+      - id: wrong_state_root_owner
+        object: /srv/docker-ansible-summary
+        violation: {uid: 4200, expected_uid: 4242}
+      - id: group_readable_state_root
+        object: /srv/docker-ansible-summary
+        violation: {mode: "0750", expected_mode: "0700"}
+      - id: wrong_instance_directory_type
+        object: /srv/docker-ansible-summary/fixture-mdad
+        violation: {type: regular_file, expected_type: directory}
+      - id: wrong_instance_directory_owner
+        object: /srv/docker-ansible-summary/fixture-mdad
+        violation: {uid: 4200, expected_uid: 4242}
+      - id: wrong_instance_directory_mode
+        object: /srv/docker-ansible-summary/fixture-mdad
+        violation: {mode: "0750", expected_mode: "0700"}
+      - id: symlinked_canonical_state
+        object: /srv/docker-ansible-summary/fixture-mdad/state.json
+        violation: symlink
+      - id: wrong_canonical_state_owner
+        object: /srv/docker-ansible-summary/fixture-mdad/state.json
+        violation: {uid: 4200, expected_uid: 4242}
+      - id: wrong_canonical_state_mode
+        object: /srv/docker-ansible-summary/fixture-mdad/state.json
+        violation: {mode: "0640", expected_mode: "0600"}
+      - id: hardlinked_canonical_state
+        object: /srv/docker-ansible-summary/fixture-mdad/state.json
+        violation: {link_count: 2, expected_link_count: 1}
+      - id: lock_is_directory
+        object: /srv/docker-ansible-summary/fixture-mdad/state.lock
+        violation: {type: directory, expected_type: regular_file}
+      - id: wrong_lock_mode
+        object: /srv/docker-ansible-summary/fixture-mdad/state.lock
+        violation: {mode: "0640", expected_mode: "0600"}
+      - id: name_descriptor_inode_mismatch
+        object: /srv/docker-ansible-summary/fixture-mdad/state.lock
+        violation:
+          name_inode: 910
+          descriptor_inode: 911
+    oracle:
+      persistence_outcome: failed
+      variant_count: 17
+      failure_reason_for_each: unsafe_state_namespace
+      docker_discovery_for_each: false
+      canonical_state_mutated_for_each: false
+      automatic_chmod_for_each: false
+      automatic_chown_for_each: false
+      automatic_unlink_for_each: false
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      task_failed: true
+      task_failed_for_each: true
+
+  - id: absent_namespace_creation_is_operation_bounded
+    initial_namespace: absent
+    variants:
+      - invocation: {operation: pre, check_mode: false}
+        namespace_creation_permitted: true
+        persistence_outcome: committed
+      - invocation: {operation: post, record_id: null, check_mode: false}
+        namespace_creation_permitted: true
+        persistence_outcome: committed
+      - invocation:
+          operation: post
+          record_id: caller-unknown-in-absent-store
+          check_mode: false
+        namespace_creation_permitted: false
+        failure_reason: unknown_record
+        persistence_outcome: conflict
+      - invocation: {operation: status, check_mode: false}
+        namespace_creation_permitted: false
+        persistence_outcome: not_attempted
+      - invocation: {operation: pre, check_mode: true}
+        namespace_creation_permitted: false
+        persistence_outcome: not_attempted
+      - invocation: {enabled: false}
+        namespace_creation_permitted: false
+        persistence_outcome: not_attempted
+    oracle:
+      new_directory_mode: "0700"
+      new_file_mode: "0600"
+      descriptor_relative_creation: true
+      exclusive_file_creation: true
+      symlink_followed: false
+
+  - id: stable_lock_and_atomic_commit_trace
+    prior_namespace:
+      lock_inode: 700
+      state_inode: 800
+      revision: 9
+    transaction:
+      expected_revision: 9
+      temporary_name_preexisted: false
+      temporary_inode: 801
+      replacement_state_inode: 801
+      trace:
+        - acquire_exclusive_state_lock
+        - recheck_lock_name_descriptor_identity
+        - reopen_and_validate_canonical_state
+        - verify_expected_revision
+        - create_unpredictable_temporary_exclusive_nofollow
+        - write_complete_canonical_bytes
+        - fsync_temporary_file
+        - recheck_temporary_metadata_and_identity
+        - atomic_replace_state_json
+        - fsync_instance_directory
+        - report_committed
+    resulting_namespace:
+      lock_inode: 700
+      state_inode: 801
+      revision: 10
+      temporary_name_present: false
+    oracle:
+      persistence_outcome: committed
+      stable_lock_inode_preserved: true
+      lock_unlinked: false
+      state_replaced_as_one_inode: true
+      mixed_store_visible: false
+      canonical_state_mode: "0600"
+      canonical_state_link_count: 1
+
+  - id: preexisting_temporary_names_are_ignored
+    canonical_state:
+      revision: 10
+      valid: true
+    preexisting_names:
+      - name: .state.json.tmp.attacker-symlink
+        type: symlink
+      - name: .state.json.tmp.attacker-hardlink
+        type: regular_file
+        link_count: 2
+    invocation_temporary:
+      name_was_unpredictable: true
+      created_exclusive: true
+      no_follow: true
+    oracle:
+      persistence_outcome: not_attempted
+      preexisting_names_opened: false
+      preexisting_names_unlinked: false
+      preexisting_names_authoritative: false
+      canonical_state_selected_by_fixed_name_only: true
+
+  - id: fault_before_atomic_replace
+    prior_state:
+      revision: 11
+      canonical_bytes_sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+    test_control:
+      inject_fault: before_atomic_replace
+    oracle:
+      persistence_outcome: failed
+      revision_after: 11
+      canonical_bytes_sha256_after: "1111111111111111111111111111111111111111111111111111111111111111"
+      temporary_file_authoritative: false
+      mixed_store_visible: false
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      task_failed: true
+      failure_reason: state_write_failed
+
+  - id: fault_after_replace_before_directory_fsync
+    prior_state:
+      revision: 11
+      canonical_bytes_sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+    candidate_state:
+      revision: 12
+      canonical_bytes_sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+      host: fixture-a.example.com
+      instance_id: fixture-mdad
+      operation: pre
+      record_id: caller-known-after-replace-001
+      phase_signature: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      observation_status: complete
+    test_control:
+      inject_fault: after_atomic_replace_before_directory_fsync
+    oracle:
+      persistence_outcome: failed
+      failure_reason: state_write_failed
+      mixed_store_visible: false
+      visible_state_immediately_after_replace: candidate
+      crash_durability: indeterminate
+      successful_machine_result_returned: false
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      task_failed: true
+      fault_stage: after_atomic_replace_before_directory_fsync
+      retry_record_id: caller-known-after-replace-001
+      retry_signature_must_match: true
+      failure_task_result:
+        changed: false
+        failed: true
+        docker_ansible_summary_failure:
+          schema_version: 1
+          host: fixture-a.example.com
+          instance_id: fixture-mdad
+          operation: pre
+          record_id: caller-known-after-replace-001
+          observation_status: complete
+          failure_reason: state_write_failed
+          observation_reason: null
+          persistence_outcome: failed
+          committed_result_replayable: false
+          replay_guidance: "Retry with the same record_id and unchanged phase inputs"
+      acceptable_recovery_after_restart:
+        - idempotent_replay_of_revision_12
+        - single_commit_from_revision_11
+      duplicate_commit_permitted: false
+
+  - id: lost_ack_replay_with_caller_id
+    prior_state:
+      revision: 12
+      journal: []
+    first_invocation:
+      operation: pre
+      record_id: caller-known-003
+      pre_signature: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    first_commit:
+      persistence_outcome: committed
+      revision_after: 13
+      result_delivery: lost
+    identical_retry:
+      operation: pre
+      record_id: caller-known-003
+      pre_signature: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    oracle:
+      persistence_outcome: not_attempted
+      replay_outcome: idempotent
+      discovery_attempted_on_retry: false
+      revision_after_retry: 13
+      duplicate_records: 0
+      durable_record_status: open
+
+  - id: delayed_pre_replay_after_completed_post
+    prior_state:
+      revision: 14
+      latest_complete_post_id: obs-delayed-replay-post
+      journal:
+        - record_id: caller-delayed-pre-004
+          status: complete
+          pre_signature: "sha256:abababababababababababababababababababababababababababababababab"
+          pre_observation_id: obs-delayed-replay-pre
+          post_observation_id: obs-delayed-replay-post
+          pre_baseline_advanced: false
+    invocation:
+      operation: pre
+      record_id: caller-delayed-pre-004
+      pre_signature: "sha256:abababababababababababababababababababababababababababababababab"
+    oracle:
+      persistence_outcome: not_attempted
+      replay_outcome: idempotent
+      discovery_attempted: false
+      store_mutated: false
+      revision_after: 14
+      returned_phase_observation_id: obs-delayed-replay-pre
+      returned_phase_baseline_advanced: false
+      journal_status_at_original_pre_commit: open
+      machine_result_journal_status: complete
+      latest_complete_post_id: obs-delayed-replay-post
+
+  - id: lost_ack_replay_of_committed_post
+    prior_state:
+      revision: 14
+      latest_complete_post_id: obs-committed-post
+      journal:
+        - record_id: caller-known-post-004
+          status: complete
+          post_signature: "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+          post_observation_id: obs-committed-post
+    original_commit:
+      operation: post
+      persistence_outcome: committed
+      revision_after: 14
+      result_delivery: lost
+      baseline_advanced: true
+    identical_retry:
+      operation: post
+      record_id: caller-known-post-004
+      post_signature: "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+    oracle:
+      persistence_outcome: not_attempted
+      replay_outcome: idempotent
+      discovery_attempted_on_retry: false
+      store_mutated: false
+      revision_after_retry: 14
+      latest_complete_post_id: obs-committed-post
+      additional_baseline_advance: false
+      returned_result:
+        observation_id: obs-committed-post
+        baseline_advanced: true
+        journal_status: complete
+
+  - id: retained_delta_preserves_endpoint_context
+    retained_record:
+      record_id: caller-context-005
+      between_observation_delta:
+        comparability: exact
+        comparison_schema_version: 1
+        from_observation_id: obs-old-baseline
+        from_observed_at: "2026-02-01T08:00:00Z"
+        from_scope:
+          patterns: ["fixture-*"]
+          identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+          comparison_schema_version: 1
+        to_observation_id: obs-retained-pre
+        to_observed_at: "2026-02-04T08:00:00Z"
+        to_scope:
+          patterns: ["fixture-*"]
+          identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+          comparison_schema_version: 1
+        changes: []
+        warnings: []
+    surrounding_state:
+      latest_complete_post_id: obs-newer-baseline
+      originating_record_for_old_baseline_retained: false
+    oracle:
+      persistence_outcome: not_attempted
+      delta_self_contained: true
+      old_baseline_lookup_required: false
+      source_time_preserved: true
+      source_scope_preserved: true
+
+  - id: retained_record_signature_conflict
+    prior_state:
+      revision: 13
+      retained_record_id: caller-known-003
+      retained_record_status: open
+      retained_pre_signature: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    invocation:
+      operation: pre
+      record_id: caller-known-003
+      pre_signature: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    oracle:
+      persistence_outcome: conflict
+      conflict_reason: signature_conflict
+      discovery_attempted: false
+      store_mutated: false
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      task_failed: true
+
+  - id: recently_pruned_record_conflict
+    prior_state:
+      revision: 14
+      journal: []
+      recently_pruned_record_ids: [caller-pruned-004]
+    invocation:
+      operation: post
+      record_id: caller-pruned-004
+    oracle:
+      persistence_outcome: conflict
+      conflict_reason: record_pruned
+      discovery_attempted: false
+      store_mutated: false
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      task_failed: true
+
+  - id: record_pruned_during_discovery
+    loaded_state:
+      revision: 20
+      journal:
+        - record_id: caller-racing-005
+          status: open
+          expected_post_revision: 20
+    proposed_transition:
+      observation_id: obs-racing-post
+      journal_status: complete
+    concurrent_committed_state:
+      revision: 21
+      journal: []
+      recently_pruned_record_ids: [caller-racing-005]
+    oracle:
+      persistence_outcome: conflict
+      conflict_reason: record_pruned
+      discovery_attempted: true
+      proposed_observation_id: obs-racing-post
+      proposed_journal_status: complete
+      proposed_values_committed: false
+      durable_journal_status: null
+      revision_after: 21
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      task_failed: true
+
+  - id: concurrent_same_phase_commit_becomes_idempotent_replay
+    loaded_state:
+      revision: 20
+      journal:
+        - record_id: caller-racing-same-phase-006
+          status: open
+          expected_post_revision: 20
+          post_signature: null
+    invocation:
+      operation: post
+      record_id: caller-racing-same-phase-006
+      phase_signature: "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    proposed_transition:
+      observation_id: obs-racing-proposed-post
+      journal_status: complete
+    concurrent_committed_state:
+      revision: 21
+      journal:
+        - record_id: caller-racing-same-phase-006
+          status: complete
+          post_signature: "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          post_observation_id: obs-racing-committed-post
+          post_baseline_advanced: true
+    oracle:
+      persistence_outcome: not_attempted
+      replay_outcome: idempotent
+      conflict_reason: null
+      discovery_attempted: true
+      store_mutated_by_invocation: false
+      revision_after: 21
+      returned_observation_id: obs-racing-committed-post
+      returned_baseline_advanced: true
+      proposed_observation_returned: false
+      task_failed: false
+
+  - id: concurrent_pre_commit_becomes_idempotent_replay
+    loaded_state:
+      revision: 30
+      journal: []
+      recently_pruned_record_ids: []
+    invocation:
+      operation: pre
+      record_id: caller-racing-pre-007
+      phase_signature: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    proposed_transition:
+      observation_id: obs-racing-proposed-pre
+      journal_status: open
+    concurrent_committed_state:
+      revision: 31
+      journal:
+        - record_id: caller-racing-pre-007
+          status: open
+          expected_post_revision: 31
+          pre_signature: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+          pre_observation_id: obs-racing-committed-pre
+          pre_baseline_advanced: false
+    oracle:
+      persistence_outcome: not_attempted
+      replay_outcome: idempotent
+      conflict_reason: null
+      discovery_attempted: true
+      store_mutated_by_invocation: false
+      revision_after: 31
+      returned_observation_id: obs-racing-committed-pre
+      returned_baseline_advanced: false
+      returned_expected_post_revision: 31
+      proposed_observation_returned: false
+      task_failed: false
+
+  - id: never_known_record
+    prior_state:
+      revision: 14
+      journal: []
+      recently_pruned_record_ids: []
+    invocation:
+      operation: post
+      record_id: caller-never-known-005
+    oracle:
+      persistence_outcome: conflict
+      conflict_reason: unknown_record
+      discovery_attempted: false
+      store_mutated: false
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      task_failed: true
+
+  - id: retention_prunes_oldest_open_record
+    prior_state:
+      revision: 15
+      latest_complete_post_id: obs-baseline-retained
+      journal:
+        - record_id: record-old-open
+          status: open
+          created_at: "2026-02-01T09:00:00Z"
+          pre_signature: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+          post_signature: null
+        - record_id: record-newer-complete
+          status: complete
+          created_at: "2026-02-02T09:00:00Z"
+      recently_pruned_record_ids: []
+    transaction:
+      journal_max_records: 2
+      append_record:
+        record_id: record-newest-complete
+        status: complete
+        created_at: "2026-02-03T09:00:00Z"
+    oracle:
+      persistence_outcome: committed
+      retained_record_ids:
+        - record-newer-complete
+        - record-newest-complete
+      pruned_record_ids: [record-old-open]
+      recently_pruned_record_ids_after: [record-old-open]
+      latest_complete_post_id: obs-baseline-retained
+      fabricated_incomplete_status: false
+
+  - id: recent_id_cap_evicts_oldest
+    prior_state:
+      revision: 16
+      journal:
+        - record_id: record-about-to-prune
+          status: complete
+          created_at: "2026-02-01T08:00:00Z"
+          pre_signature: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+          post_signature: "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        - record_id: record-retained
+          status: complete
+          created_at: "2026-02-02T08:00:00Z"
+          pre_signature: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+          post_signature: "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      recently_pruned_record_ids:
+        - pruned-id-oldest
+        - pruned-id-newer
+    transaction:
+      journal_max_records: 2
+      append_record:
+        record_id: record-newest
+        status: complete
+        created_at: "2026-02-03T08:00:00Z"
+        pre_signature: "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+        post_signature: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    oracle:
+      persistence_outcome: committed
+      retained_journal_ids:
+        - record-retained
+        - record-newest
+      retained_recent_ids:
+        - pruned-id-newer
+        - record-about-to-prune
+      evicted_recent_ids: [pruned-id-oldest]
+      appended_recent_id: record-about-to-prune
+      effective_recent_id_cap: 2
+      recent_id_count_after: 2
+
+  - id: store_byte_cap_prunes_oldest_full_record
+    prior_state:
+      revision: 17
+      exact_serialized_component_bytes:
+        envelope: 100
+        latest_complete_post: 200
+        journal:
+          record-oldest: 400
+          record-newer: 200
+        recently_pruned_record_ids: 0
+    transaction:
+      fixture_layer: internal_transition_unit
+      public_input_validation_applied: false
+      public_state_max_bytes_minimum: 1048576
+      state_max_bytes: 1000
+      append_record:
+        record_id: record-newest
+        exact_serialized_bytes: 300
+      replacement_recent_id_exact_serialized_bytes: 40
+    oracle:
+      persistence_outcome: committed
+      exact_pre_prune_candidate_bytes: 1200
+      pruned_record_ids: [record-oldest]
+      exact_post_prune_candidate_bytes: 840
+      retained_record_ids: [record-newer, record-newest]
+      required_evidence_truncated: false
+      byte_limit_satisfied: true
+      revision_after: 18
+
+  - id: required_state_exceeds_byte_cap_fails
+    prior_state:
+      revision: 18
+      exact_serialized_component_bytes:
+        envelope: 100
+        latest_complete_post: 700
+        journal: {}
+        recently_pruned_record_ids: 0
+      exact_serialized_bytes: 800
+    transaction:
+      fixture_layer: internal_transition_unit
+      public_input_validation_applied: false
+      public_state_max_bytes_minimum: 1048576
+      state_max_bytes: 1000
+      append_required_record:
+        record_id: record-cannot-fit
+        exact_serialized_bytes: 300
+    oracle:
+      persistence_outcome: failed
+      failure_reason: state_size_limit_exceeded
+      exact_required_candidate_bytes: 1100
+      prunable_record_ids: []
+      prior_store_unchanged: true
+      store_mutated: false
+      revision_after: 18
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      task_failed: true
+
+  - id: render_failure_after_commit
+    prior_state:
+      revision: 17
+      latest_complete_post_id: obs-before-render-failure
+      journal:
+        - record_id: record-render-failure
+          status: open
+          expected_post_revision: 17
+          pre_observation_id: obs-before-render-failure
+    transition:
+      operation: post
+      host: fixture-a.example.com
+      instance_id: fixture-mdad
+      record_id: record-render-failure
+      complete_observation_id: obs-committed-before-render
+    test_control:
+      inject_fault: human_renderer
+    oracle:
+      persistence_outcome: committed
+      task_outcome: failed
+      failure_reason: render_failed
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      revision_after: 18
+      latest_complete_post_id: obs-committed-before-render
+      journal_contains: [record-render-failure]
+      committed_result_recoverable: true
+      failure_diagnostic:
+        host: fixture-a.example.com
+        instance_id: fixture-mdad
+        record_id: record-render-failure
+        replay_guidance: "Retry the retained record with report_mode=none"
+      retained_replay:
+        report_mode: none
+        discovery_attempted: false
+        store_mutated: false
+        human_render_attempted: false
+        full_machine_result_returned: true
+
+  - id: presentation_capacity_failure_after_commit
+    prior_state:
+      revision: 18
+      latest_complete_post_id: obs-before-capacity-failure
+      journal:
+        - record_id: record-capacity-failure
+          status: open
+          expected_post_revision: 18
+          pre_observation_id: obs-before-capacity-failure
+    transition:
+      operation: post
+      host: fixture-a.example.com
+      instance_id: fixture-mdad
+      record_id: record-capacity-failure
+      complete_observation_id: obs-committed-before-capacity-failure
+    test_control:
+      inject_fault: presentation_capacity_exceeded
+    oracle:
+      persistence_outcome: committed
+      task_outcome: failed
+      failure_reason: presentation_capacity_exceeded
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      revision_after: 19
+      latest_complete_post_id: obs-committed-before-capacity-failure
+      journal_contains: [record-capacity-failure]
+      committed_result_recoverable: true
+      failure_envelope:
+        schema_version: 1
+        host: fixture-a.example.com
+        instance_id: fixture-mdad
+        operation: post
+        record_id: record-capacity-failure
+        observation_status: complete
+        failure_reason: presentation_capacity_exceeded
+        observation_reason: null
+        persistence_outcome: committed
+        committed_result_replayable: true
+        replay_guidance: "Retry the retained record with report_mode=none"
+      retained_replay:
+        report_mode: none
+        discovery_attempted: false
+        store_mutated: false
+        human_render_attempted: false
+        full_machine_result_returned: true
+
+  - id: canonical_complete_store_known_answer
+    input:
+      canonical_store: &canonical_known_store
+        schema_version: 1
+        comparison_schema_version: 1
+        instance_id: fixture-mdad
+        revision: 2
+        latest_complete_post: &known_answer_post
+          observation_id: obs-known-answer-post
+          observed_at: "2026-07-30T12:00:01Z"
+          scope: &known_answer_scope
+            patterns: ["fixture-*"]
+            identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+            comparison_schema_version: 1
+          status: complete
+          reason_code: null
+          warnings: []
+          discovery_backend: docker_cli_v1
+          metadata_gaps: []
+          containers:
+            fixture-api: &known_answer_container
+              name: fixture-api
+              container_id: "00000000000000000000000000000000000000000000000000000000000000aa"
+              full_image_reference: registry.example.com/team/api:v1
+              image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+              runtime_state: running
+              created_at: "2026-07-30T11:00:00Z"
+              started_at: "2026-07-30T11:00:01Z"
+              finished_at: null
+              restart_count: 0
+        journal:
+          - record_id: record-known-answer-01
+            correlation_id: null
+            created_at: "2026-07-30T12:00:00Z"
+            updated_at: "2026-07-30T12:00:01Z"
+            expected_post_revision: 1
+            pre_signature: "sha256:f09b6fbb422b755acd3aa1eb22814ed702aa91be62052df1bd9ca20bc8fb4f70"
+            post_signature: "sha256:3194b71fe0545c49e0cef4537c0b8edcd1adb7327c2378f1883d9ea980b74557"
+            status: complete
+            pre: &known_answer_pre
+              observation_id: obs-known-answer-pre
+              observed_at: "2026-07-30T12:00:00Z"
+              scope: *known_answer_scope
+              status: complete
+              reason_code: null
+              warnings: []
+              discovery_backend: docker_cli_v1
+              metadata_gaps: []
+              containers:
+                fixture-api: *known_answer_container
+            post: *known_answer_post
+            between_observation_delta:
+              comparability: no_baseline
+              comparison_schema_version: 1
+              from_observation_id: null
+              from_observed_at: null
+              from_scope: null
+              to_observation_id: obs-known-answer-pre
+              to_observed_at: "2026-07-30T12:00:00Z"
+              to_scope: *known_answer_scope
+              changes: []
+              warnings: []
+            run_window_delta:
+              comparability: exact
+              comparison_schema_version: 1
+              from_observation_id: obs-known-answer-pre
+              from_observed_at: "2026-07-30T12:00:00Z"
+              from_scope: *known_answer_scope
+              to_observation_id: obs-known-answer-post
+              to_observed_at: "2026-07-30T12:00:01Z"
+              to_scope: *known_answer_scope
+              changes:
+                - container_name: fixture-api
+                  primary_kind: unchanged
+                  kinds: [unchanged]
+                  before: *known_answer_container
+                  after: *known_answer_container
+                  image_reference_changed: false
+                  image_content_changed: false
+                  image_content_evidence: image_id
+              warnings: []
+            pre_baseline:
+              advanced: false
+              before: null
+              after: null
+            post_baseline:
+              advanced: true
+              before: null
+              after: obs-known-answer-post
+        recently_pruned_record_ids: []
+    oracle:
+      persistence_outcome: not_attempted
+      canonical_encoding: compact_sorted_utf8_json_plus_lf
+      exact_serialized_bytes: 4889
+      exact_sha256: "sha256:e3c10052991d76fe4c3f5b37be15c63e8e28830cc5892cc04b16ea307c3bd6fc"
+      schema_validated_before_hash: true
+      reparse_deep_equal: true
+      byte_for_byte_reencode_equal: true
+
+  - id: invalid_existing_store_fails_closed
+    input:
+      variants:
+        - id: malformed_json
+          source_bytes: "{not-json\n"
+        - id: noncanonical_whitespace
+          canonical_value: *canonical_known_store
+          source_encoding: pretty_printed_json_plus_lf
+        - id: unknown_store_schema_version
+          canonical_value: *canonical_known_store
+          mutation:
+            path: schema_version
+            value: 2
+        - id: unknown_comparison_schema_version
+          canonical_value: *canonical_known_store
+          mutation:
+            path: comparison_schema_version
+            value: 2
+        - id: unknown_top_level_field
+          canonical_value: *canonical_known_store
+          mutation:
+            path: unexpected
+            value: rejected
+        - id: open_record_with_committed_post
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.status
+            value: open
+        - id: absent_pre_with_retained_pre_signature
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.pre
+            value: null
+        - id: status_inconsistent_with_complete_phases
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.status
+            value: incomplete_post
+        - id: phase_signatures_stale_after_correlation_change
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.correlation_id
+            value: deploy-other
+        - id: post_signature_stale_after_scope_change
+          canonical_value: *canonical_known_store
+          mutations:
+            - path: journal.0.post.scope
+              value: &alternate_known_scope
+                patterns: ["other-*"]
+                identity: sha256:64b27e9ef013f9448b90e497fb43e7423161e7f44c97dba99df65cde4b16cdec
+                comparison_schema_version: 1
+            - path: latest_complete_post.scope
+              value: *alternate_known_scope
+            - path: journal.0.run_window_delta.comparability
+              value: incompatible_scope
+            - path: journal.0.run_window_delta.to_scope
+              value: *alternate_known_scope
+            - path: journal.0.run_window_delta.changes
+              value: []
+            - path: journal.0.status
+              value: scope_mismatch
+        - id: between_delta_to_id_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.between_observation_delta.to_observation_id
+            value: obs-wrong-pre
+        - id: between_delta_to_time_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.between_observation_delta.to_observed_at
+            value: "2026-07-30T12:00:09Z"
+        - id: between_delta_to_scope_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.between_observation_delta.to_scope
+            value: *alternate_known_scope
+        - id: run_window_from_id_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.run_window_delta.from_observation_id
+            value: obs-wrong-pre
+        - id: run_window_from_time_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.run_window_delta.from_observed_at
+            value: "2026-07-30T12:00:09Z"
+        - id: run_window_from_scope_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.run_window_delta.from_scope
+            value: *alternate_known_scope
+        - id: run_window_to_id_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.run_window_delta.to_observation_id
+            value: obs-wrong-post
+        - id: run_window_to_time_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.run_window_delta.to_observed_at
+            value: "2026-07-30T12:00:09Z"
+        - id: run_window_to_scope_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.run_window_delta.to_scope
+            value: *alternate_known_scope
+        - id: complete_post_baseline_after_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.post_baseline.after
+            value: obs-wrong-post
+        - id: pre_baseline_advanced
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.pre_baseline.advanced
+            value: true
+        - id: pre_baseline_endpoints_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.pre_baseline.after
+            value: obs-not-before
+        - id: post_baseline_before_mismatch
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.post_baseline.before
+            value: obs-not-pre-window-baseline
+        - id: record_created_at_not_pre_observed_at
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.created_at
+            value: "2026-07-30T11:59:59Z"
+        - id: record_updated_at_not_post_observed_at
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.updated_at
+            value: "2026-07-30T12:00:09Z"
+        - id: expected_post_revision_exceeds_store_revision
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.expected_post_revision
+            value: 3
+        - id: present_pre_without_signature
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.pre_signature
+            value: null
+        - id: present_post_without_signature
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.post_signature
+            value: null
+        - id: release_store_contains_synthetic_observation
+          canonical_value: *canonical_known_store
+          mutation:
+            path: journal.0.pre.discovery_backend
+            value: synthetic
+    oracle:
+      persistence_outcome: failed
+      variant_count: 29
+      canonical_store_cross_fields_valid_before_mutation: true
+      mutated_cross_field_variants_rejected: true
+      failure_reason_for_each: corrupt_state
+      task_failed_for_each: true
+      discovery_attempted_for_each: false
+      state_rewritten_for_each: false
+      automatic_upgrade_for_each: false
+      exception_text_returned_for_each: false
+      diagnostic_rendered_before_failure_for_each: true
+      full_report_rendered_for_each: false
+      full_machine_result_in_failed_callback_for_each: false
+      compact_failure_envelope_present_for_each: true
+      failure_envelope_max_bytes: 1024
+
+  - id: state_lock_timeout_is_bounded
+    input:
+      operation: pre
+      lock_timeout_seconds: 5
+      monotonic_probe_seconds: [0, 5]
+      lock_acquired: false
+      prior_revision: 2
+    oracle:
+      persistence_outcome: failed
+      failure_reason: state_lock_timeout
+      elapsed_seconds_max: 5
+      discovery_attempted: false
+      state_mutated: false
+      revision_after: 2
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      failure_envelope_max_bytes: 1024
+      task_failed: true
+
+  - id: oversized_existing_store_fails_before_parse
+    input:
+      state_max_bytes: 16777216
+      existing_state_bytes: 16777217
+      existing_state_is_regular_secure_file: true
+    oracle:
+      persistence_outcome: failed
+      failure_reason: state_size_limit_exceeded
+      json_parse_attempted: false
+      discovery_attempted: false
+      state_mutated: false
+      diagnostic_rendered_before_failure: true
+      full_report_rendered: false
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      failure_envelope_max_bytes: 1024
+      task_failed: true
+
+  - id: canonical_byte_pressure_prunes_real_serialization
+    input:
+      fixture_layer: internal_transition_unit
+      public_input_validation_applied: false
+      public_state_max_bytes_minimum: 1048576
+      prior_store: *canonical_known_store
+      proposed_revision: 3
+      append_record:
+        record_id: record-known-answer-02
+        correlation_id: null
+        created_at: "2026-07-30T12:00:01Z"
+        updated_at: "2026-07-30T12:00:01Z"
+        expected_post_revision: 3
+        pre_signature: "sha256:f09b6fbb422b755acd3aa1eb22814ed702aa91be62052df1bd9ca20bc8fb4f70"
+        post_signature: null
+        status: open
+        pre: *known_answer_post
+        post: null
+        between_observation_delta:
+          comparability: exact
+          comparison_schema_version: 1
+          from_observation_id: obs-known-answer-post
+          from_observed_at: "2026-07-30T12:00:01Z"
+          from_scope: *known_answer_scope
+          to_observation_id: obs-known-answer-post
+          to_observed_at: "2026-07-30T12:00:01Z"
+          to_scope: *known_answer_scope
+          changes:
+            - container_name: fixture-api
+              primary_kind: unchanged
+              kinds: [unchanged]
+              before: *known_answer_container
+              after: *known_answer_container
+              image_reference_changed: false
+              image_content_changed: false
+              image_content_evidence: image_id
+          warnings: []
+        run_window_delta: null
+        pre_baseline:
+          advanced: false
+          before: obs-known-answer-post
+          after: obs-known-answer-post
+        post_baseline: null
+      state_max_bytes: 5000
+    oracle:
+      persistence_outcome: committed
+      exact_pre_prune_candidate_bytes: 7642
+      exact_pre_prune_sha256: "sha256:c7d8442aa0375f0fbea7fb64b3953d8247d22310bc7791fb91e6fdadbb6ce48e"
+      exact_post_prune_candidate_bytes: 3687
+      exact_post_prune_sha256: "sha256:0d1f57b772d726b5afdd0022883653b97c672dbb0f129bd0ac79d32f153cf4c9"
+      pruned_record_ids: [record-known-answer-01]
+      retained_record_ids: [record-known-answer-02]
+      recently_pruned_record_ids_after: [record-known-answer-01]
+      revision_after: 3
+      canonical_serialization_computed_by_validator: true
+      required_evidence_truncated: false
+      byte_limit_satisfied: true

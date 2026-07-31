@@ -1,0 +1,126 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+scenario:
+  id: 7
+  title: Unexpected recreation with same image
+
+observations:
+  a:
+    observation_id: obs-07-a
+    observed_at: "2026-01-07T09:00:00Z"
+    status: complete
+    scope: &scope
+      patterns: ["fixture-*"]
+      identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+      comparison_schema_version: 1
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      fixture-api: &old
+        name: fixture-api
+        container_id: "0000000000000000000000000000000000000000000000000000000000000047"
+        full_image_reference: registry.example.com/fixture/api:v1
+        image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        runtime_state: running
+        created_at: "2026-01-01T09:00:00Z"
+        started_at: "2026-01-01T09:00:10Z"
+        finished_at: null
+        restart_count: 0
+  b:
+    observation_id: obs-07-b
+    observed_at: "2026-01-07T10:00:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      fixture-api: *old
+  c:
+    observation_id: obs-07-c
+    observed_at: "2026-01-07T10:01:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      fixture-api:
+        name: fixture-api
+        container_id: "0000000000000000000000000000000000000000000000000000000000000048"
+        full_image_reference: registry.example.com/fixture/api:v1
+        image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        runtime_state: running
+        created_at: "2026-01-07T10:00:30Z"
+        started_at: "2026-01-07T10:00:40Z"
+        finished_at: null
+        restart_count: 0
+
+prior_state:
+  exists: true
+  revision: 7
+  instance_id: mdad-fixture
+  latest_complete_post: a
+  journal:
+    - record_id: record-07
+      status: open
+      pre_observation: b
+      expected_post_revision: 7
+
+invocation:
+  operation: post
+  instance_id: mdad-fixture
+  scope: ["fixture-*"]
+  record_id: record-07
+  check_mode: false
+  b: b
+  c: c
+
+oracle:
+  between_observation_delta:
+    comparability: exact
+    comparison_schema_version: 1
+    from_observation_id: obs-07-a
+    to_observation_id: obs-07-b
+    changes:
+      - container_name: fixture-api
+        primary_kind: unchanged
+        kinds: [unchanged]
+    warnings: []
+  run_window_delta:
+    comparability: exact
+    comparison_schema_version: 1
+    from_observation_id: obs-07-b
+    to_observation_id: obs-07-c
+    changes:
+      - container_name: fixture-api
+        primary_kind: recreated
+        kinds: [recreated]
+        image_reference_changed: false
+        image_content_changed: false
+        image_content_evidence: image_id
+    warnings: []
+  baseline:
+    advanced: true
+    before: obs-07-a
+    after: obs-07-c
+  journal:
+    status: complete
+  persistence:
+    outcome: committed
+  human:
+    minimum_messages:
+      - "fixture-api"
+      - "Recreated"
+      - "No cause inferred"
+  machine_result:
+    schema_version: 1
+    operation: post
+    instance_id: mdad-fixture
+    record_id: record-07
+    observation_status: complete
+    observation: c
+    scope_identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+    baseline_advanced: true
+    journal_status: complete
+    persistence_outcome: committed

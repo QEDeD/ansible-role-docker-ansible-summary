@@ -1,0 +1,171 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Exercise DAS through a daemonless local target
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - fixture-vars.yml
+  vars:
+    das_molecule_fake_log: "{{ das_molecule_fixture_root }}/docker-calls.jsonl"
+    das_molecule_role_name: >-
+      {{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}
+    das_molecule_scope:
+      - das-*
+  environment:
+    DAS_FAKE_DOCKER_LOG: "{{ das_molecule_fake_log }}"
+    PATH: >-
+      {{ das_molecule_fixture_root }}/bin:{{ lookup('env', 'PATH') }}
+  pre_tasks:
+    - name: Validate the Molecule scenario workspace
+      ansible.builtin.assert:
+        that:
+          - lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') | length > 1
+          - >-
+            das_molecule_fixture_root is
+            match('^/tmp/docker-ansible-summary-molecule-[0-9a-f]{64}$')
+
+    - name: Reset invocation evidence for this convergence
+      ansible.builtin.file:
+        path: "{{ das_molecule_fake_log }}"
+        state: absent
+      changed_when: false
+
+    - name: Reset read-only operation state probes
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ das_molecule_fixture_root }}/status-state"
+        - "{{ das_molecule_fixture_root }}/check-state"
+
+  tasks:
+    - name: DAS contract | Disable without any operation-specific input
+      ansible.builtin.import_role:
+        name: "{{ das_molecule_role_name }}"
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_enabled: false
+
+    - name: DAS contract | Preserve the disabled result
+      ansible.builtin.set_fact:
+        das_disabled_result: "{{ docker_ansible_summary_result }}"
+
+    - name: DAS contract | Prove disabled execution did not call Docker
+      ansible.builtin.stat:
+        path: "{{ das_molecule_fake_log }}"
+      register: das_disabled_log
+
+    - name: DAS contract | Validate the disabled result
+      ansible.builtin.assert:
+        that:
+          - das_disabled_result.changed is false
+          - das_disabled_result.skipped is true
+          - das_disabled_result.persistence_outcome == "not_attempted"
+          - not das_disabled_log.stat.exists
+
+    - name: DAS contract | Observe current status without persistence
+      ansible.builtin.import_role:
+        name: "{{ das_molecule_role_name }}"
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: status
+        docker_ansible_summary_instance_id: molecule-status
+        docker_ansible_summary_scope: "{{ das_molecule_scope }}"
+        docker_ansible_summary_state_root: >-
+          {{ das_molecule_fixture_root }}/status-state
+        docker_ansible_summary_report_mode: none
+
+    - name: DAS contract | Preserve the status result
+      ansible.builtin.set_fact:
+        das_status_result: "{{ docker_ansible_summary_result }}"
+
+    - name: DAS contract | Inspect the status state root
+      ansible.builtin.stat:
+        path: "{{ das_molecule_fixture_root }}/status-state"
+      register: das_status_state
+
+    - name: DAS contract | Validate the status result
+      ansible.builtin.assert:
+        that:
+          - das_status_result.changed is false
+          - das_status_result.operation == "status"
+          - das_status_result.observation_status == "complete"
+          - das_status_result.persistence_outcome == "not_attempted"
+          - not das_status_state.stat.exists
+
+    - name: DAS contract | Simulate pre-observation in check mode
+      ansible.builtin.import_role:
+        name: "{{ das_molecule_role_name }}"
+        tasks_from: observe
+        allow_duplicates: true
+      check_mode: true
+      vars:
+        docker_ansible_summary_operation: pre
+        docker_ansible_summary_instance_id: molecule-check
+        docker_ansible_summary_scope: "{{ das_molecule_scope }}"
+        docker_ansible_summary_state_root: >-
+          {{ das_molecule_fixture_root }}/check-state
+        docker_ansible_summary_report_mode: none
+
+    - name: DAS contract | Preserve the check-mode result
+      ansible.builtin.set_fact:
+        das_check_result: "{{ docker_ansible_summary_result }}"
+
+    - name: DAS contract | Inspect the check-mode state root
+      ansible.builtin.stat:
+        path: "{{ das_molecule_fixture_root }}/check-state"
+      register: das_check_state
+
+    - name: DAS contract | Validate the check-mode result
+      ansible.builtin.assert:
+        that:
+          - das_check_result.changed is false
+          - das_check_result.simulated is true
+          - das_check_result.persistence_outcome == "not_attempted"
+          - das_check_result.record_id is none
+          - not das_check_state.stat.exists
+
+    - name: DAS contract | Capture the run-window pre-observation
+      ansible.builtin.import_role:
+        name: "{{ das_molecule_role_name }}"
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: pre
+        docker_ansible_summary_instance_id: molecule-window
+        docker_ansible_summary_scope: "{{ das_molecule_scope }}"
+        docker_ansible_summary_state_root: >-
+          {{ das_molecule_fixture_root }}/window-state
+        docker_ansible_summary_report_mode: none
+
+    - name: DAS contract | Preserve the generated record identifier
+      ansible.builtin.set_fact:
+        das_pre_record_id: "{{ docker_ansible_summary_result.record_id }}"
+
+    - name: DAS contract | Capture the matching post-observation
+      ansible.builtin.import_role:
+        name: "{{ das_molecule_role_name }}"
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: post
+        docker_ansible_summary_instance_id: molecule-window
+        docker_ansible_summary_scope: "{{ das_molecule_scope }}"
+        docker_ansible_summary_record_id: "{{ das_pre_record_id }}"
+        docker_ansible_summary_state_root: >-
+          {{ das_molecule_fixture_root }}/window-state
+        docker_ansible_summary_report_mode: none
+
+    - name: DAS contract | Validate the repeated role imports
+      ansible.builtin.assert:
+        that:
+          - docker_ansible_summary_result.changed is false
+          - docker_ansible_summary_result.record_id == das_pre_record_id
+          - docker_ansible_summary_result.journal_status == "complete"
+          - docker_ansible_summary_result.baseline_advanced is true
+          - docker_ansible_summary_result.persistence_outcome == "committed"

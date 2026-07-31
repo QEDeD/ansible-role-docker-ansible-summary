@@ -1,0 +1,213 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+schema_version: 1
+normative_registry: >-
+  matrix-docker-ansible-deploy@32c7c106fe1b7f6a126f094774cb5531f44fb0e4:
+  plans/das-rewrite-conformance.md#91-normative-requirement-to-proof-registry
+normative_commit: 32c7c106fe1b7f6a126f094774cb5531f44fb0e4
+purpose: >-
+  Implementation-name update for the frozen DAS-R001 through DAS-R020 proof
+  registry. These paths replace its pre-implementation placeholder names.
+
+requirements:
+  DAS-R001:
+    - path: tests/unit/test_comparison.py
+      selector: NumberedComparisonTests.test_numbered_observation_scenarios
+  DAS-R002:
+    - path: tests/unit/test_operation_contract_binding.py
+      selector: OperationContractFixtureBindingTests.test_pre_commit_and_store_free_check_status_paths
+    - path: tests/unit/test_operation_contract_binding.py
+      selector: OperationContractFixtureBindingTests.test_unavailable_pre_then_complete_post_binds_real_persistence
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: RetainedReplaySurfaceBindingTests.test_fixed_post_replay_is_byte_inode_write_and_action_stable
+    - path: tests/ansible/run-replay-contract.sh
+  DAS-R003:
+    - path: tests/unit/test_conformance_binding.py
+      selector: NormalizationFixtureBindingTests.test_optional_evidence_variants_become_exact_gaps
+    - path: tests/unit/test_conformance_binding.py
+      selector: NormalizationFixtureBindingTests.test_partial_required_runtime_and_name_faults_bind_full_oracles
+    - path: tests/unit/test_comparison.py
+      selector: NumberedComparisonTests.test_complete_empty_is_exact_not_unavailable
+  DAS-R004:
+    - path: tests/unit/test_discovery.py
+      selector: DiscoveryTests.test_catalogue_normalizes_one_leading_slash_and_stable_sorts
+    - path: tests/live/test_docker_transition.py
+      selector: LiveDockerTransitionTests.test_authorized_lifecycle_matrix
+  DAS-R005:
+    - path: tests/unit/test_comparison.py
+      selector: FocusedComparisonTests.test_multiple_kinds_follow_primary_precedence
+    - path: tests/unit/test_comparison.py
+      selector: FocusedComparisonTests.test_added_removed_and_unchanged_endpoint_shapes
+  DAS-R006:
+    - path: tests/unit/test_comparison.py
+      selector: NumberedComparisonTests.test_scope_mismatch_suppresses_membership_changes
+    - path: tests/unit/test_operation_contract_binding.py
+      selector: OperationContractFixtureBindingTests.test_scope_and_post_only_lifecycle_boundaries
+  DAS-R007:
+    - path: tests/unit/test_transition.py
+      selector: TransitionTests.test_baseline_advancement_matrix
+    - path: tests/unit/test_operation_contract_binding.py
+      selector: OperationContractFixtureBindingTests.test_pre_commit_and_store_free_check_status_paths
+  DAS-R008:
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_canonical_known_answer_and_real_byte_pressure
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_all_invalid_known_store_mutations_fail_production_decode
+  DAS-R009:
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_secure_namespace_and_stable_atomic_replacement
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_atomic_fault_boundaries_match_visible_store_contract
+    - path: tests/unit/test_conformance_binding.py
+      selector: NumberedScenarioFixtureBindingTests.test_scenario_21_conflict_is_after_discovery_and_store_is_unchanged
+  DAS-R010:
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_count_and_recent_id_retention_use_fixture_order
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_byte_retention_and_required_evidence_failure
+  DAS-R011:
+    - path: tests/unit/test_action_plugin.py
+      selector: ActionPluginBoundaryTests.test_valid_success_has_exact_public_allowlist_and_mode_counts
+    - path: tests/unit/test_action_plugin.py
+      selector: ActionPluginBoundaryTests.test_valid_private_failure_returns_only_bounded_public_envelope
+    - path: tests/unit/test_action_plugin.py
+      selector: ActionPluginBoundaryTests.test_render_failures_after_commit_are_replayable_and_bounded
+    - path: tests/unit/test_report.py
+      selector: ReportModelTests.test_exact_fixture_report_models
+    - path: tests/unit/test_render.py
+      selector: RendererGoldenTests.test_exact_fixture_blocks
+  DAS-R012:
+    - path: tests/role_contract/test_role_contract.py
+      selector: PublicRoleContractTests.test_role_has_no_legacy_or_project_specific_entry_point
+    - path: tests/ansible/run-local-contract.sh
+  DAS-R013:
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: DiscoveryExecutionBindingTests.test_fixture_transcript_projects_only_selected_safe_evidence
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: ActionAndPresentationBindingTests.test_machine_module_result_is_projected_from_the_exact_allowlist
+  DAS-R014:
+    - path: tests/unit/test_comparison.py
+      selector: NumberedComparisonTests.test_numbered_observation_scenarios
+    - path: tests/unit/test_transition.py
+      selector: TransitionTests.test_baseline_advancement_matrix
+    - path: tests/unit/test_persistence.py
+      selector: PersistenceTests.test_atomic_commit_and_canonical_reload
+    - path: tests/unit/test_report.py
+      selector: ReportModelTests.test_exact_fixture_report_models
+    - path: tests/unit/test_render.py
+      selector: RendererGoldenTests.test_exact_fixture_blocks
+  DAS-R015:
+    - path: tests/unit/test_transition.py
+      selector: TransitionTests.test_optional_correlation_id_is_opaque_only
+    - path: tests/unit/test_operation_contract_binding.py
+      selector: OperationContractFixtureBindingTests.test_correlation_inheritance_conflict_and_grouping_semantics
+  DAS-R016:
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_retained_delta_keeps_endpoint_context_after_source_pruning
+  DAS-R017:
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: PublicAndRoleSurfaceBindingTests.test_role_has_one_static_task_and_direct_registered_projection
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: DiscoveryExecutionBindingTests.test_scope_first_chunk_and_process_counts_match_fixture_cases
+    - path: tests/ansible/run-multihost-record-handoff.sh
+    - path: tests/ansible/run-local-contract.sh
+  DAS-R018:
+    - path: tests/callback/run-callback-contract.sh
+    - path: tests/callback/run-callback-failure-contract.sh
+    - path: tests/callback/run-structured-callback-contract.sh
+    - path: tests/unit/test_render.py
+      selector: RendererGoldenTests.test_exact_fixture_blocks
+    - path: tests/unit/test_report.py
+      selector: ReportModelTests.test_report_host_is_visible_escaped_and_wrapped
+    - path: tests/unit/test_action_support.py
+      selector: ActionSupportTests.test_compact_warning_projects_unbounded_or_unsafe_hosts
+  DAS-R019:
+    - path: tests/unit/test_image.py
+      selector: ImageParsingTests.test_structural_reference_examples
+    - path: tests/unit/test_image.py
+      selector: ImageProjectionTests.test_report_wide_projection_is_order_invariant
+  DAS-R020:
+    - path: tests/performance/test_budgets.py
+      selector: PerformanceBudgetTests.test_declared_process_event_output_and_timing_budgets
+    - path: tests/performance/test_persistence_budgets.py
+      selector: PersistencePerformanceTests.test_empty_typical_and_near_cap_persistence_budgets
+    - path: tests/live/benchmark_docker_discovery.py
+
+secondary_lanes:
+  raw_docker_process:
+    - path: tests/unit/test_bounded_process.py
+      selector: BoundedProcessIntegrationTests.test_success_concurrently_drains_stdout_and_stderr
+    - path: tests/unit/test_bounded_process.py
+      selector: BoundedProcessIntegrationTests.test_nonzero_exit_preserves_return_code
+    - path: tests/unit/test_bounded_process.py
+      selector: BoundedProcessIntegrationTests.test_stdout_cap_is_independent_and_reaps_child
+    - path: tests/unit/test_bounded_process.py
+      selector: BoundedProcessIntegrationTests.test_stderr_cap_is_independent_and_reaps_child
+    - path: tests/unit/test_bounded_process.py
+      selector: BoundedProcessIntegrationTests.test_logical_line_cap_reaps_child
+    - path: tests/unit/test_bounded_process.py
+      selector: BoundedProcessIntegrationTests.test_deadline_timeout_terminates_reaps_and_bounds_overrun
+    - path: tests/unit/test_bounded_process.py
+      selector: BoundedProcessIntegrationTests.test_sigterm_resistant_child_is_killed_reaped_and_bounded
+    - path: tests/unit/test_discovery.py
+      selector: DiscoveryTests.test_chunking_binds_complete_argv_bytes_and_preserves_order
+    - path: tests/unit/test_discovery.py
+      selector: DiscoveryTests.test_one_deadline_budget_decreases_across_all_inspect_chunks
+    - path: tests/unit/test_discovery.py
+      selector: DiscoveryTests.test_protocol_uses_only_lf_as_a_record_delimiter
+    - path: tests/unit/test_discovery.py
+      selector: DiscoveryTests.test_no_such_object_classifier_requires_exact_lf_records
+    - path: tests/unit/test_discovery.py
+      selector: DiscoveryTests.test_field_local_required_and_unsupported_evidence_is_retained
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: DiscoveryExecutionBindingTests.test_production_argv_and_caps_are_exact
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: DiscoveryExecutionBindingTests.test_fixture_transcript_projects_only_selected_safe_evidence
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: DiscoveryExecutionBindingTests.test_successful_catalogue_stderr_is_discarded
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: DiscoveryExecutionBindingTests.test_fixture_no_such_object_race_is_partial_without_raw_output
+  persistence:
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_unsafe_preexisting_namespace_representatives_fail_closed
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_all_invalid_known_store_mutations_fail_production_decode
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_atomic_fault_boundaries_match_visible_store_contract
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_count_and_recent_id_retention_use_fixture_order
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_byte_retention_and_required_evidence_failure
+    - path: tests/unit/test_persistence_fixture_contract.py
+      selector: PersistenceFixtureContractTests.test_lock_timeout_and_oversized_store_stop_before_state_use
+  ansible_boundary:
+    - path: tests/ansible/run-local-contract.sh
+    - path: tests/ansible/run-multihost-record-handoff.sh
+    - path: tests/ansible/run-replay-contract.sh
+    - path: tests/callback/run-callback-failure-contract.sh
+    - path: molecule/default/molecule.yml
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: RetainedReplaySurfaceBindingTests.test_fixed_post_replay_is_byte_inode_write_and_action_stable
+    - path: tests/unit/test_execution_surface_fixture_binding.py
+      selector: ActionAndPresentationBindingTests.test_machine_module_result_is_projected_from_the_exact_allowlist
+  renderer_callback:
+    - path: tests/unit/test_report.py
+      selector: ReportModelTests.test_exact_fixture_report_models
+    - path: tests/unit/test_report.py
+      selector: ReportModelTests.test_exact_geometry
+    - path: tests/unit/test_report.py
+      selector: ReportModelTests.test_container_shortening_and_hash_collision
+    - path: tests/unit/test_render.py
+      selector: RendererGoldenTests.test_exact_fixture_blocks
+    - path: tests/unit/test_render.py
+      selector: RendererGoldenTests.test_minimum_width_layout_golden
+    - path: tests/unit/test_render.py
+      selector: RendererGoldenTests.test_visible_escape_matches_utf8_byte_projection
+    - path: tests/unit/test_render.py
+      selector: RendererGoldenTests.test_internal_table_cells_cannot_create_physical_lines_or_controls
+    - path: tests/callback/run-callback-contract.sh
+    - path: tests/callback/run-callback-failure-contract.sh
+    - path: tests/callback/run-structured-callback-contract.sh

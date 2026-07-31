@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+all:
+  children:
+    callback_failure_single:
+      hosts:
+        failure:
+          ansible_connection: local
+    callback_failure_conflict:
+      hosts:
+        conflict-a:
+          ansible_connection: local
+        conflict-b:
+          ansible_connection: local

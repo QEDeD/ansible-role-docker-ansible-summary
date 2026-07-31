@@ -1,0 +1,106 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+scenario:
+  id: 11
+  title: Container addition
+
+observations:
+  a:
+    observation_id: obs-11-a
+    observed_at: "2026-01-11T09:00:00Z"
+    status: complete
+    scope: &scope
+      patterns: ["fixture-*"]
+      identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+      comparison_schema_version: 1
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+  b:
+    observation_id: obs-11-b
+    observed_at: "2026-01-11T10:00:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+  c:
+    observation_id: obs-11-c
+    observed_at: "2026-01-11T10:01:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      fixture-api:
+        name: fixture-api
+        container_id: "000000000000000000000000000000000000000000000000000000000000006e"
+        full_image_reference: registry.example.com/fixture/api:v1
+        image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        runtime_state: running
+        created_at: "2026-01-11T10:00:20Z"
+        started_at: "2026-01-11T10:00:30Z"
+        finished_at: null
+        restart_count: 0
+
+prior_state:
+  exists: true
+  revision: 11
+  instance_id: mdad-fixture
+  latest_complete_post: a
+  journal:
+    - record_id: record-11
+      status: open
+      pre_observation: b
+      expected_post_revision: 11
+
+invocation:
+  operation: post
+  instance_id: mdad-fixture
+  scope: ["fixture-*"]
+  record_id: record-11
+  check_mode: false
+  b: b
+  c: c
+
+oracle:
+  between_observation_delta:
+    comparability: exact
+    comparison_schema_version: 1
+    from_observation_id: obs-11-a
+    to_observation_id: obs-11-b
+    changes: []
+    warnings: []
+  run_window_delta:
+    comparability: exact
+    comparison_schema_version: 1
+    from_observation_id: obs-11-b
+    to_observation_id: obs-11-c
+    changes:
+      - container_name: fixture-api
+        primary_kind: added
+        kinds: [added]
+    warnings: []
+  baseline:
+    advanced: true
+    before: obs-11-a
+    after: obs-11-c
+  journal:
+    status: complete
+  persistence:
+    outcome: committed
+  human:
+    minimum_messages: ["fixture-api", "Added"]
+  machine_result:
+    schema_version: 1
+    operation: post
+    instance_id: mdad-fixture
+    record_id: record-11
+    observation_status: complete
+    observation: c
+    scope_identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+    baseline_advanced: true
+    journal_status: complete
+    persistence_outcome: committed

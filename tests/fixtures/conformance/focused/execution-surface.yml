@@ -1,0 +1,1157 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+fixture_family: focused_cases
+topic: execution_surface
+description: >-
+  Constant-size Ansible execution, bounded Docker subprocess work, deliberate
+  final-report output, and benchmark-contract cases. Intentional table lines
+  are not counted as incidental task noise.
+
+batch_limits:
+  catalogue_includes_container_ids_and_names: true
+  scope_applied_before_container_inspect: true
+  container_max_items: 100
+  argument_byte_limit_binding: true
+  default_argument_byte_limit_bytes: 8192
+  argument_byte_limit_scope: complete_argv
+  argument_terminating_nul_bytes: 1
+  argument_encoding: os.fsencode
+  default_container_id_bytes_including_nul: 65
+
+state_and_deadline_limits:
+  default_state_max_bytes: 16777216
+  minimum_state_max_bytes: 1048576
+  maximum_state_max_bytes: 268435456
+  exact_canonical_serialization_is_binding: true
+  default_discovery_timeout_seconds: 30
+  minimum_discovery_timeout_seconds: 1
+  maximum_discovery_timeout_seconds: 300
+  one_monotonic_deadline_for_all_processes: true
+
+normal_verbosity_event_budget:
+  reference_invocation: static_import_role
+  role_task_start_events: 1
+  terminal_task_result_events: 1
+  per_item_result_events: 0
+  separate_include_success_events: 0
+  callback_rendered_line_count_is_portability_invariant: false
+  normal_verbosity_incidental_lines_definition: >-
+    Role-emitted lines beyond the callback-owned task envelope and the
+    intentional report or required diagnostic.
+
+cases:
+  - id: public_input_contract_is_frozen
+    public_variables:
+      docker_ansible_summary_enabled:
+        presence: defaulted
+        type: boolean
+        default: true
+      docker_ansible_summary_operation:
+        presence: required
+        type: string
+        allowed_values: [pre, post, status]
+      docker_ansible_summary_instance_id:
+        presence: required
+        type: string
+        pattern: "[a-z0-9][a-z0-9_-]{0,62}"
+      docker_ansible_summary_scope:
+        presence: required
+        type: ascii_fnmatch_scalar_or_list
+        matcher: python_fnmatch_fnmatchcase
+        max_normalized_patterns: 64
+        max_pattern_ascii_bytes: 256
+        max_normalized_ascii_bytes: 4096
+      docker_ansible_summary_record_id:
+        presence: optional
+        type: string
+        default: omitted
+        pattern: "[A-Za-z0-9][A-Za-z0-9._:-]{0,127}"
+      docker_ansible_summary_state_root:
+        presence: defaulted
+        type: posix_path
+        default: /var/lib/docker-ansible-summary
+        constraints: [absolute, non_root, exact_normal_form]
+      docker_ansible_summary_journal_max_records:
+        presence: defaulted
+        type: integer
+        default: 30
+        minimum: 1
+        maximum: 100
+      docker_ansible_summary_state_max_bytes:
+        presence: defaulted
+        type: integer
+        default: 16777216
+        minimum: 1048576
+        maximum: 268435456
+      docker_ansible_summary_correlation_id:
+        presence: optional
+        type: string
+        default: omitted
+        maximum_utf8_bytes: 256
+        control_characters_allowed: false
+      docker_ansible_summary_report_mode:
+        presence: defaulted
+        type: string
+        default: final
+        allowed_values: [final, each, none]
+      docker_ansible_summary_report_width:
+        presence: defaulted
+        type: integer
+        default: 120
+        minimum: 100
+        maximum: 240
+      docker_ansible_summary_discovery_timeout_seconds:
+        presence: defaulted
+        type: integer
+        default: 30
+        minimum: 1
+        maximum: 300
+      docker_ansible_summary_failure_policy:
+        presence: defaulted
+        type: string
+        default: report
+        allowed_values: [report, fail_after_report]
+    internal_constants:
+      container_chunk_max_items: 100
+      complete_argv_max_bytes: 8192
+      state_lock_timeout_seconds: 5
+    oracle:
+      exact_public_variable_count: 13
+      strict_namespaced_allowlist: true
+      unknown_namespaced_variable_rejected: true
+      predecessor_namespace_variable_rejected: true
+      registered_output_name_exempt: docker_ansible_summary_result
+      defaults_are_documented_namespaced_defaults_only: true
+      internal_constants_are_not_public_inputs: true
+
+  - id: complete_pre_default_is_quiet
+    input:
+      enabled: true
+      operation: pre
+      report_mode: final
+      observation_status: complete
+      listed_container_ids: 250
+      selected_container_ids: 20
+      selected_union_report_rows: 20
+    expected_chunks:
+      container_inspect: 1
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 0
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 0
+      intentional_table_lines_excluded_from_noise_budget: true
+      unselected_catalogue_rows: 230
+      unselected_container_inspections: 0
+      docker_processes:
+        container_list: 1
+        container_inspect: 1
+        total: 2
+
+  - id: complete_post_emits_one_final_block
+    input:
+      enabled: true
+      operation: post
+      report_mode: final
+      observation_status: complete
+      listed_container_ids: 101
+      selected_container_ids: 101
+      selected_union_report_rows: 101
+      observation_fixture_id: report-mode-equivalence-observation
+    expected_chunks:
+      container_inspect: 2
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 1
+      contiguous_host_blocks_required: true
+      single_display_call_is_sufficient_proof: false
+      intentional_table_lines_excluded_from_noise_budget: true
+      machine_result_equivalence_group: complete-post-report-mode-only
+      machine_result_equivalence_ignores:
+        - report_mode
+        - human_presentation
+      docker_processes:
+        container_list: 1
+        container_inspect: 2
+        total: 3
+
+  - id: status_emits_one_store_free_block
+    input:
+      enabled: true
+      operation: status
+      report_mode: final
+      observation_status: complete
+      listed_container_ids: 10
+      selected_container_ids: 10
+      selected_union_report_rows: 10
+    expected_chunks:
+      container_inspect: 1
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 1
+      intentional_table_lines_excluded_from_noise_budget: true
+      store_reads: 0
+      store_writes: 0
+      docker_processes:
+        container_list: 1
+        container_inspect: 1
+        total: 2
+
+  - id: complete_empty_uses_only_catalogue_process
+    input:
+      enabled: true
+      operation: post
+      report_mode: final
+      observation_status: complete
+      pre_endpoint_present: false
+      listed_container_ids: 0
+      selected_container_ids: 0
+      selected_union_report_rows: 0
+    expected_chunks:
+      container_inspect: 0
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 1
+      intentional_table_lines_excluded_from_noise_budget: true
+      comparison_shape: post_only_current
+      primary_table_kind: current
+      run_window_comparison: false
+      zero_row_table_is_explicit: true
+      paired_zero_current_case:
+        id: complete_all_removals_zero_current_still_reports_union_rows
+        distinguishing_input: pre_endpoint_present
+      docker_processes:
+        container_list: 1
+        container_inspect: 0
+        total: 1
+
+  - id: complete_all_removals_zero_current_still_reports_union_rows
+    input:
+      enabled: true
+      operation: post
+      report_mode: final
+      observation_status: complete
+      pre_endpoint_present: true
+      pre_selected_rows: 2
+      listed_container_ids: 0
+      selected_container_ids: 0
+      selected_union_report_rows: 2
+    expected_chunks:
+      container_inspect: 0
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 1
+      intentional_table_lines_excluded_from_noise_budget: true
+      comparison_shape: complete_run_window
+      primary_table_kind: run_window
+      report_row_count: 2
+      removed_row_count: 2
+      after_marker: "<absent>"
+      generic_zero_row_message_forbidden: true
+      paired_zero_current_case:
+        id: complete_empty_uses_only_catalogue_process
+        distinguishing_input: pre_endpoint_present
+      docker_processes:
+        container_list: 1
+        container_inspect: 0
+        total: 1
+
+  - id: omitted_report_mode_defaults_final_and_display_is_last
+    input:
+      enabled: true
+      operation: post
+      observation_status: complete
+      listed_container_ids: 1
+      selected_container_ids: 1
+      selected_union_report_rows: 1
+    expected_chunks:
+      container_inspect: 1
+    oracle:
+      effective_report_mode: final
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 1
+      contiguous_host_blocks_required: true
+      single_display_call_is_sufficient_proof: false
+      intentional_table_lines_excluded_from_noise_budget: true
+      ordered_role_event_trace:
+        - observe_compare_and_commit
+        - display_and_finalize
+      role_event_trace_granularity: internal_single_action_phases
+      last_role_owned_event: display_and_finalize
+      role_events_after_display: []
+      post_display_bookkeeping_events: 0
+      final_role_owned_output: das_report
+      consumer_output_after_role_is_out_of_scope: true
+      docker_processes:
+        container_list: 1
+        container_inspect: 1
+        total: 2
+
+  - id: large_catalogue_task_count_is_constant
+    input:
+      enabled: true
+      operation: post
+      report_mode: final
+      observation_status: complete
+      listed_container_ids: 500
+      selected_container_ids: 500
+      selected_union_report_rows: 500
+    expected_chunks:
+      container_inspect: 5
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 1
+      intentional_table_lines_excluded_from_noise_budget: true
+      target_complexity: "O(G + R + N + K + S log S)"
+      store_free_target_memory: "O(G + N + K + S)"
+      writing_phase_additional_time: "O(P + Q)"
+      writing_phase_additional_memory: "O(P + Q)"
+      pure_pipeline_target_ms_max: 100
+      absolute_timing_targets_provisional: true
+      timing_target_freeze_condition: adapter_spike_with_environment_metadata
+      benchmark_environment_required: true
+      benchmark_percentiles_required: [p50, p95]
+      docker_processes:
+        container_list: 1
+        container_inspect: 5
+        total: 6
+
+  - id: synthetic_scaling_guard_100_to_1000
+    input:
+      enabled: true
+      operation: post
+      report_mode: final
+      comparison_sizes: [100, 1000]
+      comparison_selected_union_report_rows: [100, 1000]
+      listed_container_ids: 1000
+      selected_container_ids: 1000
+      selected_union_report_rows: 1000
+    expected_chunks:
+      container_inspect: 10
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 1
+      intentional_table_lines_excluded_from_noise_budget: true
+      one_thousand_pipeline_target_ms_max: 1000
+      growth_factor_max_after_fixed_startup: 15
+      absolute_timing_targets_provisional: true
+      timing_target_freeze_condition: adapter_spike_with_environment_metadata
+      docker_processes:
+        container_list: 1
+        container_inspect: 10
+        total: 11
+
+  - id: near_cap_store_rewrite_is_measured_and_bounded
+    input:
+      enabled: true
+      operation: post
+      report_mode: final
+      observation_status: complete
+      listed_container_ids: 10
+      selected_container_ids: 10
+      selected_union_report_rows: 10
+      retained_store_bytes_before: 15728640
+      new_candidate_evidence_bytes_before_pruning: 1310720
+      exact_candidate_store_bytes_before_pruning: 17039360
+      state_max_bytes: 16777216
+      exact_candidate_store_bytes_after_pruning: 16515072
+    expected_chunks:
+      container_inspect: 1
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 1
+      intentional_table_lines_excluded_from_noise_budget: true
+      state_work_complexity: "O(P + Q)"
+      state_memory_complexity: "O(P + Q)"
+      exact_candidate_within_byte_cap: true
+      benchmark_store_profiles: [empty, typical, near_cap]
+      measured_phases:
+        - read
+        - parse_validate
+        - transition
+        - canonical_serialize
+        - fsync_replace
+        - total
+      absolute_state_timing_target_provisional: true
+      timing_target_freeze_condition: state_profile_benchmark
+      docker_processes:
+        container_list: 1
+        container_inspect: 1
+        total: 2
+
+  - id: argument_byte_limit_splits_before_item_limit
+    input:
+      enabled: true
+      operation: status
+      report_mode: final
+      observation_status: complete
+      listed_container_ids: 10
+      selected_container_ids: 10
+      selected_union_report_rows: 10
+      fixed_argv: [/usr/bin/docker, container, inspect]
+      container_identifiers:
+        - "0000000000000000000000000000000000000000000000000000000000000000"
+        - "0000000000000000000000000000000000000000000000000000000000000001"
+        - "0000000000000000000000000000000000000000000000000000000000000002"
+        - "0000000000000000000000000000000000000000000000000000000000000003"
+        - "0000000000000000000000000000000000000000000000000000000000000004"
+        - "0000000000000000000000000000000000000000000000000000000000000005"
+        - "0000000000000000000000000000000000000000000000000000000000000006"
+        - "0000000000000000000000000000000000000000000000000000000000000007"
+        - "0000000000000000000000000000000000000000000000000000000000000008"
+        - "0000000000000000000000000000000000000000000000000000000000000009"
+      fixture_internal_argument_byte_limit_bytes: 229
+    item_only_chunks:
+      container_inspect: 1
+    expected_chunks:
+      container_inspect: 4
+    oracle:
+      chunk_order: stable_input_order
+      byte_accounting_includes_complete_argv_and_nuls: true
+      chunk_identifier_suffixes: ["012", "345", "678", "9"]
+      complete_argv_bytes_by_chunk: [229, 229, 229, 99]
+      largest_complete_argv_bytes: 229
+      argument_byte_limit_is_binding: true
+      chunks_differ_from_item_only: true
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 1
+      intentional_table_lines_excluded_from_noise_budget: true
+      docker_processes:
+        container_list: 1
+        container_inspect: 4
+        total: 5
+
+  - id: disabled_short_circuit_has_no_work
+    input:
+      enabled: false
+      operation: null
+      report_mode: null
+      observation_status: null
+      listed_container_ids: 0
+      selected_container_ids: 0
+    expected_chunks:
+      container_inspect: 0
+    oracle:
+      remote_module_invocations: 0
+      role_owned_task_starts: 1
+      controller_action_invocations: 1
+      controller_display_actions: 0
+      task_terminal_event: skipped
+      remote_temporary_files_created: 0
+      operation_specific_inputs_present: false
+      per_object_ansible_events: 0
+      ansible_changed: false
+      human_table_blocks: 0
+      discovery_attempted: false
+      store_access_attempted: false
+      machine_result_status: skipped
+      docker_processes:
+        container_list: 0
+        container_inspect: 0
+        total: 0
+
+  - id: static_import_repeated_handoff_is_host_local
+    input:
+      invocation:
+        module: ansible.builtin.import_role
+        tasks_from: observe
+        allow_duplicates: true
+        public_parameter: omitted
+      provisional_ansible_core_floor: 2.15.1
+      phases: [pre, post]
+      hosts: [fixture-a.example.com, fixture-b.example.com]
+      registered_result_name: docker_ansible_summary_result
+      reference_role_task:
+        action_plugin_and_module: docker_ansible_summary
+        register: docker_ansible_summary_result
+        result_projection: direct
+      post_record_id_expression: "{{ docker_ansible_summary_result.record_id }}"
+      pre_record_ids:
+        fixture-a.example.com: record-static-a
+        fixture-b.example.com: record-static-b
+      post_record_ids:
+        fixture-a.example.com: record-static-a
+        fixture-b.example.com: record-static-b
+    oracle:
+      role_task_starts_per_phase: 1
+      separate_include_success_events_per_phase: 0
+      remote_module_invocations_per_phase: 1
+      post_uses_host_local_registered_record_id: true
+      cross_host_record_id_contamination: false
+      exact_record_id_access_paths:
+        pre_output: docker_ansible_summary_result.record_id
+        post_input: docker_ansible_summary_result.record_id
+      forbidden_nested_record_id_path: >-
+        docker_ansible_summary_result.docker_ansible_summary_result.record_id
+      documented_namespaced_defaults_public_at_candidate_floor: true
+      internal_yaml_variables_present: false
+      role_vars_main_present: false
+      facts_created: []
+      quiet_reference_contract_satisfied: true
+
+  - id: dynamic_include_exceeds_reference_event_budget
+    input:
+      invocation:
+        module: ansible.builtin.include_role
+        tasks_from: observe
+        allow_duplicates: true
+        public: false
+      phases: [pre, post]
+    oracle:
+      semantic_handoff_supported: true
+      visible_success_events_per_phase: 2
+      separate_include_success_events_per_phase: 1
+      role_task_starts_per_phase: 1
+      quiet_reference_contract_satisfied: false
+      v1_reference_invocation: false
+
+  - id: enabled_missing_inputs_fails_before_module
+    input:
+      enabled: true
+      operation: omitted
+      instance_id: omitted
+      scope: omitted
+    oracle:
+      controller_validation_attempted: true
+      failure_reason: invalid_input
+      task_failed: true
+      remote_module_invocations: 0
+      controller_display_actions: 1
+      docker_processes: 0
+      filesystem_side_effects: []
+      remote_temporary_files_created: 0
+
+  - id: module_result_is_sanitized
+    input:
+      enabled: true
+      synthetic_module_result_keys:
+        - changed
+        - invocation
+        - stdout
+        - stderr
+        - observation
+        - safe_reason
+    oracle:
+      exact_role_authored_top_level_keys:
+        - changed
+        - schema_version
+        - operation
+        - instance_id
+        - record_id
+        - correlation_id
+        - observation
+        - observation_status
+        - scope_identity
+        - between_observation_delta
+        - run_window_delta
+        - baseline
+        - baseline_advanced
+        - journal_status
+        - persistence_outcome
+        - replay_outcome
+        - simulated
+        - skipped
+        - warnings
+      exact_machine_field_count: 18
+      changed: false
+      machine_fields_are_direct: true
+      nested_result_payload_key_present: false
+      forbidden_returned_keys:
+        - invocation
+        - stdout
+        - stderr
+        - docker_ansible_summary_result
+      module_result_passthrough: false
+      public_result_built_from_allowlist: true
+      framework_private_executor_decorations_outside_projection: true
+
+  - id: oversize_identifier_is_not_invoked_or_echoed
+    input:
+      enabled: true
+      operation: status
+      observation_status: partial
+      listed_container_ids: 1
+      selected_container_ids: 1
+      fixed_argv: [/usr/bin/docker, container, inspect]
+      container_identifiers:
+        - "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      fixture_internal_argument_byte_limit_bytes: 98
+    expected_chunks:
+      container_inspect: 0
+    oracle:
+      observation_status: partial
+      reason_code: inspect_identifier_argv_too_large
+      minimum_complete_argv_bytes: 99
+      oversize_identifier_invoked: false
+      oversize_identifier_returned: false
+      unbounded_fallback_used: false
+      docker_processes:
+        container_list: 1
+        container_inspect: 0
+        total: 1
+
+  - id: partial_pre_final_emits_one_warning_without_table
+    input:
+      enabled: true
+      operation: pre
+      report_mode: final
+      report_width: 100
+      host: fixture-partial.example.com
+      instance_id: fixture-mdad
+      observation_status: partial
+      observation_reason: required_field_missing
+      listed_container_ids: 1
+      selected_container_ids: 1
+      selected_union_report_rows: 1
+    expected_chunks:
+      container_inspect: 1
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 0
+      intentional_table_lines_excluded_from_noise_budget: true
+      compact_warning_blocks: 1
+      exact_warning_block: |-
+        DAS warning | host=fixture-partial.example.com | instance=fixture-mdad | operation=pre
+        Observation partial | reason=required_field_missing | table suppressed in report_mode=final
+      exact_warning_line_count: 2
+      maximum_warning_line_width: 100
+      catalogue_dumped: false
+      docker_processes:
+        container_list: 1
+        container_inspect: 1
+        total: 2
+
+  - id: unavailable_pre_final_emits_one_warning_without_table
+    input:
+      enabled: true
+      operation: pre
+      report_mode: final
+      report_width: 100
+      host: fixture-unavailable.example.com
+      instance_id: fixture-mdad
+      observation_status: unavailable
+      observation_reason: docker_command_timeout
+      listed_container_ids: 0
+      selected_container_ids: 0
+      selected_union_report_rows: 0
+    expected_chunks:
+      container_inspect: 0
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 0
+      intentional_table_lines_excluded_from_noise_budget: true
+      compact_warning_blocks: 1
+      exact_warning_block: |-
+        DAS warning | host=fixture-unavailable.example.com | instance=fixture-mdad | operation=pre
+        Observation unavailable | reason=docker_command_timeout | table suppressed in report_mode=final
+      exact_warning_line_count: 2
+      maximum_warning_line_width: 100
+      catalogue_dumped: false
+      docker_processes:
+        container_list: 1
+        container_inspect: 0
+        total: 1
+
+  - id: each_mode_pre_emits_one_block
+    input:
+      enabled: true
+      operation: pre
+      report_mode: each
+      observation_status: complete
+      listed_container_ids: 1
+      selected_container_ids: 1
+      selected_union_report_rows: 1
+    expected_chunks:
+      container_inspect: 1
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 1
+      intentional_table_lines_excluded_from_noise_budget: true
+      docker_processes:
+        container_list: 1
+        container_inspect: 1
+        total: 2
+
+  - id: none_mode_noncomplete_warning_matrix_is_exact
+    input:
+      report_mode: none
+      failure_policy: report
+      report_width: 100
+      host: fixture-none.example.com
+      instance_id: fixture-mdad
+      variants:
+        pre_partial:
+          operation: pre
+          observation_status: partial
+          observation_reason: required_field_missing
+        pre_unavailable:
+          operation: pre
+          observation_status: unavailable
+          observation_reason: docker_unavailable
+        post_partial:
+          operation: post
+          observation_status: partial
+          observation_reason: required_field_missing
+        post_unavailable:
+          operation: post
+          observation_status: unavailable
+          observation_reason: docker_unavailable
+        status_partial:
+          operation: status
+          observation_status: partial
+          observation_reason: required_field_missing
+        status_unavailable:
+          operation: status
+          observation_status: unavailable
+          observation_reason: docker_unavailable
+    oracle:
+      exact_warning_blocks:
+        pre_partial: |-
+          DAS warning | host=fixture-none.example.com | instance=fixture-mdad | operation=pre
+          Observation partial | reason=required_field_missing | table suppressed in report_mode=none
+        pre_unavailable: |-
+          DAS warning | host=fixture-none.example.com | instance=fixture-mdad | operation=pre
+          Observation unavailable | reason=docker_unavailable | table suppressed in report_mode=none
+        post_partial: |-
+          DAS warning | host=fixture-none.example.com | instance=fixture-mdad | operation=post
+          Observation partial | reason=required_field_missing | table suppressed in report_mode=none
+        post_unavailable: |-
+          DAS warning | host=fixture-none.example.com | instance=fixture-mdad | operation=post
+          Observation unavailable | reason=docker_unavailable | table suppressed in report_mode=none
+        status_partial: |-
+          DAS warning | host=fixture-none.example.com | instance=fixture-mdad | operation=status
+          Observation partial | reason=required_field_missing | table suppressed in report_mode=none
+        status_unavailable: |-
+          DAS warning | host=fixture-none.example.com | instance=fixture-mdad | operation=status
+          Observation unavailable | reason=docker_unavailable | table suppressed in report_mode=none
+      controller_display_actions_per_variant: 1
+      compact_warning_blocks_per_variant: 1
+      exact_warning_line_count_per_variant: 2
+      human_table_blocks_per_variant: 0
+      catalogue_dumped: false
+      task_failed_per_variant: false
+      machine_result_present_per_variant: true
+      warning_suppressed: false
+      informational_footer_suppressed: true
+
+  - id: none_mode_suppresses_table_not_machine_result
+    input:
+      enabled: true
+      operation: post
+      report_mode: none
+      observation_status: complete
+      listed_container_ids: 101
+      selected_container_ids: 101
+      selected_union_report_rows: 101
+      observation_fixture_id: report-mode-equivalence-observation
+    expected_chunks:
+      container_inspect: 2
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 0
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 0
+      intentional_table_lines_excluded_from_noise_budget: true
+      machine_result_present: true
+      machine_result_equivalent_to: complete_post_emits_one_final_block
+      machine_result_deep_equal: true
+      state_transition_deep_equal: true
+      persistence_result_deep_equal: true
+      replay_identity_equal: true
+      machine_result_equivalence_group: complete-post-report-mode-only
+      machine_result_equivalence_ignores:
+        - report_mode
+        - human_presentation
+      only_allowed_case_difference: human_presentation
+      report_mode_controls_only_presentation: true
+      hard_errors_suppressed: false
+      minimum_safe_failure_diagnostics_suppressed: false
+      docker_processes:
+        container_list: 1
+        container_inspect: 2
+        total: 3
+
+  - id: none_mode_fail_after_report_keeps_minimum_safe_diagnostic
+    input:
+      enabled: true
+      operation: post
+      report_mode: none
+      observation_status: unavailable
+      failure_policy: fail_after_report
+      listed_container_ids: 0
+      selected_container_ids: 0
+      selected_union_report_rows: 0
+    expected_chunks:
+      container_inspect: 0
+    oracle:
+      remote_module_invocations: 1
+      role_owned_task_starts: 1
+      controller_display_actions: 1
+      per_object_ansible_events: 0
+      registered_result_dumps: 0
+      censored_no_log_results: 0
+      normal_verbosity_incidental_lines: 0
+      ansible_changed: false
+      human_table_blocks: 0
+      intentional_table_lines_excluded_from_noise_budget: true
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      failure_envelope_max_bytes: 1024
+      retained_full_result_replayable_with_report_policy: true
+      task_failed: true
+      failure_reason: observation_noncomplete
+      observation_reason: docker_unavailable
+      hard_error_suppressed: false
+      minimum_safe_failure_diagnostic_blocks: 1
+      diagnostic_rendered_before_failure: true
+      full_table_suppressed: true
+      failure_diagnostic_contains:
+        - host
+        - instance_id
+        - operation
+        - failure_reason
+        - observation_reason
+      docker_processes:
+        container_list: 1
+        container_inspect: 0
+        total: 1
+
+  - id: phase_signature_known_answer
+    input:
+      signature_object:
+        comparison_schema_version: 1
+        correlation_id: null
+        instance_id: fixture-mdad
+        operation: pre
+        scope: ["fixture-*"]
+        signature_schema_version: 1
+    oracle:
+      canonical_json_utf8: >-
+        {"comparison_schema_version":1,"correlation_id":null,"instance_id":"fixture-mdad","operation":"pre","scope":["fixture-*"],"signature_schema_version":1}
+      trailing_lf: false
+      exact_serialized_bytes: 151
+      exact_signature: "sha256:f09b6fbb422b755acd3aa1eb22814ed702aa91be62052df1bd9ca20bc8fb4f70"
+      unknown_key_rejected: true
+
+  - id: phase_signature_non_ascii_correlation_known_answer
+    input:
+      signature_object:
+        comparison_schema_version: 1
+        correlation_id: deploy-ø
+        instance_id: fixture-mdad
+        operation: pre
+        scope: ["fixture-*"]
+        signature_schema_version: 1
+    oracle:
+      canonical_json_utf8: >-
+        {"comparison_schema_version":1,"correlation_id":"deploy-ø","instance_id":"fixture-mdad","operation":"pre","scope":["fixture-*"],"signature_schema_version":1}
+      exact_utf8_hex: >-
+        7b22636f6d70617269736f6e5f736368656d615f76657273696f6e223a312c22636f7272656c6174696f6e5f6964223a226465706c6f792dc3b8222c22696e7374616e63655f6964223a22666978747572652d6d646164222c226f7065726174696f6e223a22707265222c2273636f7065223a5b22666978747572652d2a225d2c227369676e61747572655f736368656d615f76657273696f6e223a317d
+      trailing_lf: false
+      exact_serialized_bytes: 158
+      exact_signature: "sha256:f4c35463107ed692043b5b87b0a9ffa5597042bae8ffb133ba2640227d251910"
+      escaped_ascii_json_differs: true
+
+  - id: observed_at_opens_bounded_sampling_interval
+    input:
+      discovery_timeout_seconds: 30
+      fake_event_order:
+        - sequence: 1
+          kind: utc_clock
+          event: capture_observed_at
+          value: "2026-07-30T12:55:00Z"
+        - sequence: 2
+          kind: monotonic_clock
+          event: start_discovery_deadline
+          value: 1000.0
+        - sequence: 3
+          kind: docker_process
+          event: start_catalogue
+        - sequence: 4
+          kind: docker_process
+          event: finish_catalogue
+        - sequence: 5
+          kind: docker_process
+          event: start_inspect_chunk
+          chunk: 1
+        - sequence: 6
+          kind: docker_process
+          event: finish_inspect_chunk
+          chunk: 1
+        - sequence: 7
+          kind: observer
+          event: finalize_observation
+      retained_replay_events: []
+    oracle:
+      observed_at: "2026-07-30T12:55:00Z"
+      observed_at_capture_count: 1
+      sampling_interval_opens_at: capture_observed_at
+      sampling_interval_closes_at: finalize_observation
+      deadline_origin_after_observed_at: true
+      catalogue_immediately_after_deadline_origin: true
+      maximum_interval_seconds: 30
+      atomic_docker_snapshot_claimed: false
+      public_interval_end_field_present: false
+      replay_retains_committed_observed_at: true
+      replay_clock_reads: 0
+      replay_docker_processes: 0
+
+  - id: production_docker_argv_projection_and_caps_are_exact
+    input:
+      docker_executable: /usr/bin/docker
+      catalogue_argv:
+        - /usr/bin/docker
+        - container
+        - ls
+        - --all
+        - --no-trunc
+        - --format
+        - '{"id":{{json .ID}},"name":{{json .Names}}}'
+      inspect_fixed_argv:
+        - /usr/bin/docker
+        - container
+        - inspect
+        - --format
+        - '{"container_id":{{json .Id}},"created_at":{{json .Created}},"finished_at":{{json .State.FinishedAt}},"full_image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"name":{{json .Name}},"restart_count":{{json .RestartCount}},"runtime_state":{{json .State.Status}},"started_at":{{json .State.StartedAt}}}'
+      container_id_recipe:
+        count: 100
+        encoding: lowercase_hex_zero_padded
+        encoded_characters_each: 64
+    oracle:
+      argv_measurement: sum_os_fsencode_argument_bytes_plus_one_nul_per_argument
+      catalogue_argv_bytes: 98
+      inspect_fixed_argv_bytes: 357
+      one_container_id_argv_bytes: 65
+      inspect_argv_bytes_at_100_ids: 6857
+      complete_argv_max_bytes: 8192
+      container_ids_per_chunk_max: 100
+      catalogue_rows_max: 4096
+      subprocess_stdout_max_bytes: 2097152
+      subprocess_stderr_max_bytes: 65536
+      logical_output_line_max_bytes: 8192
+      catalogue_exact_keys: [id, name]
+      inspect_exact_keys:
+        - container_id
+        - created_at
+        - finished_at
+        - full_image_reference
+        - image_id
+        - name
+        - restart_count
+        - runtime_state
+        - started_at
+      shell_used: false
+      full_inspect_json_fallback: false
+      raw_process_fields_returned: false
+
+  - id: fake_docker_transcript_projects_one_selected_container
+    input:
+      normalized_scope: ["fixture-*"]
+      synthetic_daemon_object:
+        container_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        synthetic_unprojected_canary: SYNTHETIC_CANARY_DO_NOT_RETURN
+      processes:
+        - phase: catalogue
+          argv:
+            - /usr/bin/docker
+            - container
+            - ls
+            - --all
+            - --no-trunc
+            - --format
+            - '{"id":{{json .ID}},"name":{{json .Names}}}'
+          returncode: 0
+          stdout: |
+            {"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","name":"fixture-api"}
+            {"id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","name":"unrelated-api"}
+          stderr: ""
+          monotonic_elapsed_seconds: 0.10
+        - phase: inspect
+          argv:
+            - /usr/bin/docker
+            - container
+            - inspect
+            - --format
+            - '{"container_id":{{json .Id}},"created_at":{{json .Created}},"finished_at":{{json .State.FinishedAt}},"full_image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"name":{{json .Name}},"restart_count":{{json .RestartCount}},"runtime_state":{{json .State.Status}},"started_at":{{json .State.StartedAt}}}'
+            - "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          returncode: 0
+          stdout: |
+            {"container_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","created_at":"2026-07-30T11:00:00Z","finished_at":"0001-01-01T00:00:00Z","full_image_reference":"registry.example.com/team/api:v1","image_id":"sha256:1111111111111111111111111111111111111111111111111111111111111111","name":"/fixture-api","restart_count":0,"runtime_state":"running","started_at":"2026-07-30T11:00:01Z"}
+          stderr: ""
+          monotonic_elapsed_seconds: 0.20
+    oracle:
+      docker_process_count: 2
+      catalogue_process_count: 1
+      inspect_process_count: 1
+      selected_container_ids:
+        - "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      out_of_scope_container_ids_not_inspected:
+        - "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      normalized_container:
+        name: fixture-api
+        container_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        full_image_reference: registry.example.com/team/api:v1
+        image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        runtime_state: running
+        created_at: "2026-07-30T11:00:00Z"
+        started_at: "2026-07-30T11:00:01Z"
+        finished_at: null
+        restart_count: 0
+      observation_status: complete
+      reason_code: null
+      metadata_gaps: []
+      synthetic_canary_returned: false
+      raw_stdout_returned: false
+      raw_stderr_returned: false
+      shell_used: false
+
+  - id: fake_docker_no_such_object_race_is_partial
+    input:
+      requested_container_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      process:
+        phase: inspect
+        argv:
+          - /usr/bin/docker
+          - container
+          - inspect
+          - --format
+          - '{"container_id":{{json .Id}},"created_at":{{json .Created}},"finished_at":{{json .State.FinishedAt}},"full_image_reference":{{json .Config.Image}},"image_id":{{json .Image}},"name":{{json .Name}},"restart_count":{{json .RestartCount}},"runtime_state":{{json .State.Status}},"started_at":{{json .State.StartedAt}}}'
+          - "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        returncode: 1
+        stdout: ""
+        stderr: "Error: No such object: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+        monotonic_elapsed_seconds: 0.05
+    oracle:
+      observation_status: partial
+      reason_code: required_field_missing
+      metadata_gaps: [fixture-api.container_inspect]
+      absence_authoritative: false
+      generated_warning: >-
+        Required container evidence is missing; inspect metadata_gaps
+      stderr_classifier: exact_no_such_object_prefix_and_requested_id
+      raw_stdout_returned: false
+      raw_stderr_returned: false
+      shell_used: false
+
+  - id: fake_docker_success_with_bounded_stderr_is_accepted
+    input:
+      process:
+        phase: catalogue
+        argv:
+          - /usr/bin/docker
+          - container
+          - ls
+          - --all
+          - --no-trunc
+          - --format
+          - '{"id":{{json .ID}},"name":{{json .Names}}}'
+        returncode: 0
+        stdout: ""
+        stderr: "WARNING: synthetic deprecation notice\n"
+        monotonic_elapsed_seconds: 0.05
+    oracle:
+      observation_status: complete
+      reason_code: null
+      containers: {}
+      generated_warnings: []
+      stderr_disposition: discarded_without_classification
+      stderr_cap_still_enforced: true
+      raw_stdout_returned: false
+      raw_stderr_returned: false
+      shell_used: false

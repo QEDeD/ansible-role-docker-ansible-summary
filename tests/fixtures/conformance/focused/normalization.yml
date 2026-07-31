@@ -1,0 +1,823 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+fixture_family: focused_cases
+topic: normalization
+description: >-
+  Scope, identity, and projected Docker-CLI normalization cases. Inputs are
+  bounded synthetic projections or parser outcomes, never full Docker inspect
+  documents or raw stderr.
+
+scope_cases:
+  - id: scalar_scope
+    input: " fixture-* "
+    oracle:
+      patterns: ["fixture-*"]
+      identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+
+  - id: sort_and_deduplicate
+    input: ["fixture-*", "Fixture.*", "fixture-*"]
+    oracle:
+      patterns: ["Fixture.*", "fixture-*"]
+      identity: sha256:3929b345aa6fc8903b016555abfbd19a30006b472a57e06ba1a66ca025b162a3
+
+  - id: explicit_all
+    input: ["fixture-*", all]
+    oracle:
+      patterns: ["*"]
+      identity: sha256:b98487f528496053b979eeb6ae103f5e566821b215dc63e01046df24995aa93a
+
+  - id: invalid_empty
+    input: []
+    oracle:
+      validation: failed
+      reason_code: invalid_empty_scope
+      filesystem_side_effects: []
+
+  - id: invalid_whitespace_scalar
+    input: "   "
+    oracle:
+      validation: failed
+      reason_code: invalid_empty_scope_entry
+      filesystem_side_effects: []
+
+  - id: invalid_mixed_empty_entry
+    input: ["fixture-*", " "]
+    oracle:
+      validation: failed
+      reason_code: invalid_empty_scope_entry
+      filesystem_side_effects: []
+
+  - id: fnmatchcase_full_name_dialect
+    input:
+      - "Fixture-[!0-9]?i"
+      - "worker-[ab]"
+      - "service-*"
+    oracle:
+      patterns: ["Fixture-[!0-9]?i", "service-*", "worker-[ab]"]
+      identity: sha256:d24d4f56bb8e0b04dc89255c69f94ed043d33624d5f869115d2d85603b3e126a
+      matcher: python_fnmatch_fnmatchcase
+      supported_tokens: ["*", "?", "[seq]", "[!seq]"]
+      case_sensitive: true
+      full_name_match: true
+      probes:
+        - name: Fixture-Api
+          matches: true
+        - name: Fixture-api
+          matches: true
+        - name: Fixture-9pi
+          matches: false
+        - name: fixture-Api
+          matches: false
+        - name: PrefixFixture-Api
+          matches: false
+        - name: Fixture-Api-suffix
+          matches: false
+        - name: worker-a
+          matches: true
+        - name: worker-b
+          matches: true
+        - name: worker-c
+          matches: false
+        - name: worker-aa
+          matches: false
+        - name: service-api
+          matches: true
+        - name: xservice-api
+          matches: false
+
+  - id: invalid_scope_pattern_characters
+    input_variants:
+      slash: "fixture/*"
+      internal_whitespace: "fixture *"
+      backslash: 'fixture-\*'
+      non_ascii: "fixture-é"
+      control_character:
+        recipe: prefix_lf_suffix
+    oracle:
+      validation: failed
+      all_variants_rejected: true
+      rejected_constraints:
+        slash: forbidden_character
+        internal_whitespace: forbidden_character
+        backslash: forbidden_character
+        non_ascii: printable_ascii
+        control_character: printable_ascii
+      filesystem_side_effects: []
+
+  - id: scope_pattern_item_byte_bound
+    boundary_input_recipe:
+      kind: indexed_ascii_patterns
+      count: 1
+      prefix: p
+      index_width: 2
+      pattern_bytes: 256
+    overflow_input_recipe:
+      kind: indexed_ascii_patterns
+      count: 1
+      prefix: p
+      index_width: 2
+      pattern_bytes: 257
+    oracle:
+      boundary_validation: passed
+      normalized_pattern_count: 1
+      normalized_total_bytes: 256
+      identity: sha256:d69eba23cc2131d1a3809cc7a75bb043000116a167669a3ec7f8d7d7e639189a
+      overflow_validation: failed
+      overflow_constraint: per_pattern_bytes
+      filesystem_side_effects: []
+
+  - id: scope_pattern_count_bound
+    boundary_input_recipe:
+      kind: indexed_ascii_patterns
+      count: 64
+      prefix: p
+      index_width: 2
+    overflow_input_recipe:
+      kind: indexed_ascii_patterns
+      count: 65
+      prefix: p
+      index_width: 2
+    oracle:
+      boundary_validation: passed
+      normalized_pattern_count: 64
+      normalized_total_bytes: 192
+      identity: sha256:f953c0cf33937fda16a2032c9a1bddcbd34e7ca71c274e8ef620c610f2523c6f
+      overflow_validation: failed
+      overflow_constraint: normalized_pattern_count
+      filesystem_side_effects: []
+
+  - id: scope_pattern_total_byte_bound
+    boundary_input_recipe:
+      kind: indexed_ascii_patterns
+      count: 16
+      prefix: p
+      index_width: 2
+      pattern_bytes: 256
+    overflow_input_recipe:
+      kind: indexed_ascii_patterns
+      count: 17
+      prefix: p
+      index_width: 2
+      pattern_bytes: 241
+    oracle:
+      boundary_validation: passed
+      normalized_pattern_count: 16
+      normalized_total_bytes: 4096
+      identity: sha256:9954a13b93bf157b99b3982048699b1302355cf804ca339a8df9ded888b4a4c5
+      overflow_validation: failed
+      overflow_constraint: normalized_pattern_bytes
+      filesystem_side_effects: []
+
+discovery_cases:
+  - id: complete_empty_catalogue
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue: []
+    oracle:
+      observation_status: complete
+      containers: {}
+      container_inspect_calls: 0
+
+  - id: docker_cli_absent
+    safe_adapter_input:
+      list_result:
+        status: failed
+        reason_code: docker_cli_absent
+    oracle:
+      observation_status: unavailable
+      reason_code: docker_cli_absent
+      containers: null
+      authoritative_absence: false
+
+  - id: docker_daemon_unreachable
+    safe_adapter_input:
+      list_result:
+        status: failed
+        reason_code: docker_daemon_unreachable
+    oracle:
+      observation_status: unavailable
+      reason_code: docker_daemon_unreachable
+      containers: null
+      authoritative_absence: false
+
+  - id: docker_daemon_unauthorized
+    safe_adapter_input:
+      list_result:
+        status: failed
+        reason_code: docker_daemon_unauthorized
+    oracle:
+      observation_status: unavailable
+      reason_code: docker_daemon_unauthorized
+      containers: null
+      authoritative_absence: false
+
+  - id: catalogue_deadline_is_unavailable
+    discovery_timeout_seconds: 30
+    safe_adapter_input:
+      list_result:
+        status: failed
+        reason_code: docker_command_timeout
+        safe_phase: catalogue
+        elapsed_seconds: 30
+    oracle:
+      observation_status: unavailable
+      reason_code: docker_command_timeout
+      warning: Docker discovery command timed out
+      safe_phase: catalogue
+      elapsed_seconds: 30
+      containers: null
+      authoritative_absence: false
+      raw_process_fields_returned: []
+      timeout_budget_reset_per_process: false
+
+  - id: selected_inspect_deadline_is_partial
+    requested_scope: ["fixture-*"]
+    discovery_timeout_seconds: 30
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000fb"
+            name: fixture-api
+      timeout_result:
+        reason_code: docker_command_timeout
+        safe_phase: container_inspect
+        elapsed_seconds: 30
+        remaining_budget_seconds: 0
+    oracle:
+      observation_status: partial
+      reason_code: docker_command_timeout
+      warning: Docker discovery command timed out
+      safe_phase: container_inspect
+      elapsed_seconds: 30
+      containers: {}
+      metadata_gaps: [fixture-api.container_inspect]
+      authoritative_absence: false
+      raw_process_fields_returned: []
+      timeout_budget_reset_per_process: false
+
+  - id: monotonic_deadline_decreases_across_container_chunks
+    discovery_timeout_seconds: 30
+    safe_adapter_input:
+      schedule_projection: allowlisted_synthetic_timing_only
+    monotonic_process_schedule:
+      - phase: catalogue
+        chunk: 1
+        started_elapsed_seconds: 0
+        timeout_budget_seconds: 30
+        finished_elapsed_seconds: 2
+        remaining_after_seconds: 28
+        outcome: success
+      - phase: container_inspect
+        chunk: 1
+        started_elapsed_seconds: 2
+        timeout_budget_seconds: 28
+        finished_elapsed_seconds: 7
+        remaining_after_seconds: 23
+        outcome: success
+      - phase: container_inspect
+        chunk: 2
+        started_elapsed_seconds: 7
+        timeout_budget_seconds: 23
+        finished_elapsed_seconds: 14
+        remaining_after_seconds: 16
+        outcome: success
+      - phase: container_inspect
+        chunk: 3
+        started_elapsed_seconds: 14
+        timeout_budget_seconds: 16
+        finished_elapsed_seconds: 18
+        remaining_after_seconds: 12
+        outcome: success
+      - phase: container_inspect
+        chunk: 4
+        started_elapsed_seconds: 18
+        timeout_budget_seconds: 12
+        finished_elapsed_seconds: 30
+        remaining_after_seconds: 0
+        outcome: timeout
+    oracle:
+      observation_status: partial
+      reason_code: docker_command_timeout
+      warning: Docker discovery command timed out
+      safe_phase: container_inspect
+      elapsed_seconds: 30
+      remaining_budget_seconds: 0
+      executed_processes: 5
+      applied_budgets: [30, 28, 23, 16, 12]
+      budgets_strictly_decrease: true
+      every_budget_equals_deadline_minus_start_elapsed: true
+      every_remaining_equals_deadline_minus_finish_elapsed: true
+      timeout_budget_reset_per_process: false
+      child_terminated_and_reaped: true
+      authoritative_absence: false
+      raw_process_fields_returned: []
+
+  - id: failed_inspect_chunk_is_atomic_and_stops_later_chunks
+    requested_scope: ["fixture-*"]
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000a1"
+            name: fixture-a
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000b1"
+            name: fixture-b
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000c1"
+            name: fixture-c
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000d1"
+            name: fixture-d
+      inspect_chunk_plan:
+        - chunk: 1
+          selected_names: [fixture-a]
+          outcome: success
+          accepted_names: [fixture-a]
+        - chunk: 2
+          selected_names: [fixture-b, fixture-c]
+          parseable_stdout_prefix_names: [fixture-b]
+          failure_variants:
+            generic_nonzero:
+              returncode: 1
+              stderr_classifier: permission_denied
+            exact_no_such_object:
+              returncode: 1
+              stderr_classifier: exact_no_such_object
+            malformed_protocol:
+              returncode: 0
+              parser_failure: invalid_json
+            output_cap:
+              status: failed
+              stdout_byte_limit_exceeded: true
+            timeout:
+              status: timed_out
+              child_terminated_and_reaped: true
+        - chunk: 3
+          selected_names: [fixture-d]
+          outcome: not_started
+    oracle:
+      observation_status: partial
+      reason_code: docker_daemon_unauthorized
+      failure_variant_reasons:
+        generic_nonzero: docker_daemon_unauthorized
+        exact_no_such_object: required_field_missing
+        malformed_protocol: docker_protocol_error
+        output_cap: docker_output_limit_exceeded
+        timeout: docker_command_timeout
+      retained_container_names: [fixture-a]
+      discarded_current_chunk_names: [fixture-b, fixture-c]
+      unstarted_chunk_names: [fixture-d]
+      metadata_gaps:
+        - fixture-b.container_inspect
+        - fixture-c.container_inspect
+        - fixture-d.container_inspect
+      invoked_inspect_chunks: [1, 2]
+      unstarted_inspect_chunks: [3]
+      current_chunk_stdout_prefix_accepted: false
+      same_chunk_atomicity_for_all_failure_variants: true
+      later_chunks_started_after_failure: false
+      authoritative_absence: false
+      raw_process_fields_returned: []
+
+  - id: selected_container_inspect_failure_is_partial
+    requested_scope: ["fixture-*"]
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000f1"
+            name: fixture-api
+      partial_container_projection:
+        name: /fixture-api
+        container_id: "00000000000000000000000000000000000000000000000000000000000000f1"
+        full_image_reference: registry.example.com/team/api:v1
+        image_id: null
+        runtime_state: running
+        missing_required_fields: [image_id]
+    oracle:
+      selected_names: [fixture-api]
+      observation_status: partial
+      reason_code: required_field_missing
+      metadata_gaps: [fixture-api.image_id]
+      authoritative_absence: false
+      catalogue_container_count: 1
+      selected_container_inspect_count: 1
+
+  - id: malformed_catalogue_is_protocol_unavailable
+    safe_adapter_input:
+      list_result:
+        status: failed
+        parser_failure: invalid_json
+    oracle:
+      observation_status: unavailable
+      reason_code: docker_protocol_error
+      containers: null
+      authoritative_absence: false
+      raw_process_fields_returned: []
+
+  - id: catalogue_capacity_is_unavailable
+    safe_adapter_input:
+      list_result:
+        status: failed
+        validated_row_count: 4097
+        catalogue_row_limit: 4096
+    oracle:
+      observation_status: unavailable
+      reason_code: discovery_capacity_exceeded
+      containers: null
+      authoritative_absence: false
+      raw_process_fields_returned: []
+
+  - id: inspect_selected_id_disappears
+    requested_scope: ["fixture-*"]
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000d0"
+            name: fixture-api
+      inspect_result:
+        status: success
+        projections: []
+    oracle:
+      observation_status: partial
+      reason_code: required_field_missing
+      containers: {}
+      metadata_gaps: [fixture-api.container_inspect]
+      authoritative_absence: false
+
+  - id: inspect_identity_mismatch_is_partial
+    requested_scope: ["fixture-*"]
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000d1"
+            name: fixture-api
+      inspect_result:
+        status: success
+        projections:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+            name: /fixture-api
+    oracle:
+      observation_status: partial
+      reason_code: required_field_missing
+      containers: {}
+      metadata_gaps: [fixture-api.container_inspect]
+      authoritative_absence: false
+
+  - id: inspect_name_mismatch_is_scope_unknown
+    requested_scope: ["fixture-*"]
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000d3"
+            name: fixture-api
+      inspect_result:
+        status: success
+        projections:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000d3"
+            name: /other-api
+    oracle:
+      observation_status: partial
+      reason_code: scope_membership_unknown
+      containers: {}
+      metadata_gaps:
+        - fixture-api.container_inspect
+        - fixture-api.name
+      authoritative_absence: false
+
+  - id: inspect_output_cap_is_partial
+    requested_scope: ["fixture-*"]
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000d4"
+            name: fixture-api
+      inspect_result:
+        status: failed
+        stdout_bytes_observed: 2097153
+        stdout_byte_limit: 2097152
+    oracle:
+      observation_status: partial
+      reason_code: docker_output_limit_exceeded
+      containers: {}
+      metadata_gaps: [fixture-api.container_inspect]
+      authoritative_absence: false
+      raw_process_fields_returned: []
+
+  - id: known_out_of_scope_catalogue_row_is_not_inspected
+    requested_scope: ["fixture-*"]
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000f9"
+            name: fixture-api
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000fa"
+            name: other-broken
+      safe_container_projections:
+        - name: /fixture-api
+          container_id: "00000000000000000000000000000000000000000000000000000000000000f9"
+          full_image_reference: registry.example.com/team/api:v1
+          image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+          runtime_state: running
+    oracle:
+      selected_names: [fixture-api]
+      excluded_names: [other-broken]
+      observation_status: complete
+      metadata_gaps: []
+      authoritative_absence: true
+      catalogue_container_count: 2
+      selected_container_inspect_count: 1
+      unselected_container_inspections: 0
+
+  - id: catalogue_name_missing_is_partial
+    requested_scope: ["fixture-*"]
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000f2"
+            name: null
+            gap: name_unparsable
+    oracle:
+      observation_status: partial
+      reason_code: scope_membership_unknown
+      metadata_gaps: [docker.catalogue]
+      containers: {}
+      authoritative_absence: false
+      catalogue_container_count: 1
+      selected_container_inspect_count: 0
+
+  - id: mixed_catalogue_case_sensitive_overlapping_scope
+    requested_scope: ["fixture-api*", "Fixture-*", "fixture-*"]
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000f3"
+            name: fixture-api
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000f4"
+            name: fixture-worker
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000f5"
+            name: Fixture-Admin
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000f6"
+            name: other-service
+      safe_container_projections:
+        - name: /fixture-api
+          container_id: "00000000000000000000000000000000000000000000000000000000000000f3"
+          full_image_reference: registry.example.com/team/api:v1
+          image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+          runtime_state: running
+        - name: /fixture-worker
+          container_id: "00000000000000000000000000000000000000000000000000000000000000f4"
+          full_image_reference: registry.example.com/team/worker:v1
+          image_id: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+          runtime_state: stopped
+        - name: /Fixture-Admin
+          container_id: "00000000000000000000000000000000000000000000000000000000000000f5"
+          full_image_reference: registry.example.com/team/admin:v1
+          image_id: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+          runtime_state: running
+    oracle:
+      normalized_scope:
+        patterns: ["Fixture-*", "fixture-*", "fixture-api*"]
+        identity: sha256:502b705c5ab87be39ce67acb7e21d3edcbc696a5eb5cf9dad72e0f05b2e06654
+      catalogue_container_count: 4
+      inspected_container_count: 3
+      selected_names: [Fixture-Admin, fixture-api, fixture-worker]
+      selected_name_count: 3
+      duplicate_selections: 0
+      excluded_names: [other-service]
+      unselected_container_inspections: 0
+      observation_status: complete
+
+  - id: explicit_all_selects_mixed_catalogue
+    requested_scope: ["*"]
+    safe_adapter_input:
+      list_result:
+        status: success
+        catalogue:
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000f7"
+            name: fixture-api
+          - container_id: "00000000000000000000000000000000000000000000000000000000000000f8"
+            name: other-service
+      safe_container_projections:
+        - name: /fixture-api
+          container_id: "00000000000000000000000000000000000000000000000000000000000000f7"
+          full_image_reference: registry.example.com/team/api:v1
+          image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+          runtime_state: running
+        - name: /other-service
+          container_id: "00000000000000000000000000000000000000000000000000000000000000f8"
+          full_image_reference: registry.example.com/team/other:v1
+          image_id: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+          runtime_state: stopped
+    oracle:
+      normalized_scope:
+        patterns: ["*"]
+        identity: sha256:b98487f528496053b979eeb6ae103f5e566821b215dc63e01046df24995aa93a
+      catalogue_container_count: 2
+      inspected_container_count: 2
+      selected_names: [fixture-api, other-service]
+      observation_status: complete
+
+container_cases:
+  - id: api_leading_slash_and_registry_port
+    safe_adapter_projection:
+      name: /Fixture.API_01
+      container_id: "00000000000000000000000000000000000000000000000000000000000000e1"
+      full_image_reference: registry.example.com:5443/team/api:v1
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      runtime_state: running
+    oracle:
+      name: Fixture.API_01
+      full_image_reference: registry.example.com:5443/team/api:v1
+      invented_latest_tag: false
+
+  - id: digest_reference_preserved
+    safe_adapter_projection:
+      name: /fixture-worker
+      container_id: "00000000000000000000000000000000000000000000000000000000000000e2"
+      full_image_reference: "registry.example.com/team/worker@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      image_id: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      runtime_state: stopped
+    oracle:
+      name: fixture-worker
+      full_image_reference: "registry.example.com/team/worker@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      invented_latest_tag: false
+
+  - id: untagged_reference_preserved
+    safe_adapter_projection:
+      name: /fixture-cache_01
+      container_id: "00000000000000000000000000000000000000000000000000000000000000e3"
+      full_image_reference: registry.example.com/team/cache
+      image_id: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      runtime_state: running
+    oracle:
+      name: fixture-cache_01
+      full_image_reference: registry.example.com/team/cache
+      invented_latest_tag: false
+
+  - id: raw_exited_normalizes_to_stopped
+    safe_adapter_projection:
+      name: /fixture-stopped
+      container_id: "00000000000000000000000000000000000000000000000000000000000000e4"
+      full_image_reference: registry.example.com/team/stopped:v1
+      image_id: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      raw_runtime_state: exited
+    oracle:
+      name: fixture-stopped
+      runtime_state: stopped
+      observation_status: complete
+
+  - id: unknown_runtime_makes_observation_partial
+    safe_adapter_projection:
+      name: /fixture-unknown
+      container_id: "00000000000000000000000000000000000000000000000000000000000000e5"
+      full_image_reference: registry.example.com/team/unknown:v1
+      image_id: "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      raw_runtime_state: hibernating
+    oracle:
+      name: fixture-unknown
+      runtime_state: null
+      observation_status: partial
+      reason_code: unsupported_runtime_state
+      metadata_gaps: [fixture-unknown.runtime_state]
+      authoritative_absence: false
+
+  - id: docker_zero_time_sentinels_normalize_to_null
+    safe_adapter_projection:
+      name: /fixture-created
+      container_id: "00000000000000000000000000000000000000000000000000000000000000e6"
+      full_image_reference: registry.example.com/team/created:v1
+      image_id: "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+      runtime_state: created
+      created_at: "2026-07-30T09:00:00.123456789Z"
+      started_at: "0001-01-01T00:00:00Z"
+      finished_at: "0001-01-01T00:00:00Z"
+      restart_count: 0
+    oracle:
+      name: fixture-created
+      created_at: "2026-07-30T09:00:00.123456789Z"
+      started_at: null
+      finished_at: null
+      metadata_gaps: []
+      observation_status: complete
+
+  - id: invalid_optional_evidence_normalizes_to_gap
+    required_projection:
+      name: fixture-optional
+      container_id: "00000000000000000000000000000000000000000000000000000000000000e7"
+      full_image_reference: registry.example.com/team/optional:v1
+      image_id: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      runtime_state: running
+    input_variants:
+      invalid_calendar_created_at:
+        field: created_at
+        raw_value: "2026-02-30T12:00:00Z"
+      non_utc_started_at:
+        field: started_at
+        raw_value: "2026-07-30T14:00:00+02:00"
+      malformed_finished_at:
+        field: finished_at
+        raw_value: not-a-time
+      negative_restart_count:
+        field: restart_count
+        raw_value: -1
+      boolean_restart_count:
+        field: restart_count
+        raw_value: true
+    oracle:
+      invalid_calendar_created_at:
+        normalized_value: null
+        metadata_gaps: [fixture-optional.created_at]
+        observation_status: complete
+        reason_code: null
+        warnings: []
+      non_utc_started_at:
+        normalized_value: null
+        metadata_gaps: [fixture-optional.started_at]
+        observation_status: complete
+        reason_code: null
+        warnings: []
+      malformed_finished_at:
+        normalized_value: null
+        metadata_gaps: [fixture-optional.finished_at]
+        observation_status: complete
+        reason_code: null
+        warnings: []
+      negative_restart_count:
+        normalized_value: null
+        metadata_gaps: [fixture-optional.restart_count]
+        observation_status: complete
+        reason_code: null
+        warnings: []
+      boolean_restart_count:
+        normalized_value: null
+        metadata_gaps: [fixture-optional.restart_count]
+        observation_status: complete
+        reason_code: null
+        warnings: []
+      required_evidence_preserved: true
+      authoritative_absence: true
+
+  - id: canonical_observation_bounds_and_allowlist_reject_mutations
+    boundary_recipe:
+      observation_keys:
+        - observation_id
+        - observed_at
+        - scope
+        - status
+        - reason_code
+        - warnings
+        - discovery_backend
+        - metadata_gaps
+        - containers
+      container_keys:
+        - name
+        - container_id
+        - full_image_reference
+        - image_id
+        - runtime_state
+        - created_at
+        - started_at
+        - finished_at
+        - restart_count
+      discovery_backend: docker_cli_v1
+      container_name:
+        character: n
+        bytes: 255
+      image_reference:
+        character: r
+        bytes: 4096
+      container_count: 4096
+      metadata_gaps:
+        - fixture-api.created_at
+        - fixture-api.restart_count
+    mutation_variants:
+      - observation_unknown_key
+      - container_unknown_key
+      - container_name_256_bytes
+      - image_reference_4097_bytes
+      - image_reference_control_character
+      - container_count_4097
+      - unknown_discovery_backend
+      - metadata_gaps_unsorted
+      - metadata_gaps_duplicate
+      - metadata_gap_unknown_path
+      - complete_reason_nonnull
+      - stale_gap_for_available_field
+    oracle:
+      boundary_accepted: true
+      mutation_count: 12
+      every_mutation_rejected: true
+      unknown_keys_rejected: true
+      metadata_gap_order_and_paths_enforced: true
+      complete_reason_must_be_null: true
+      available_evidence_cannot_retain_gap: true

@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+all:
+  children:
+    callback_structured:
+      hosts:
+        structured:
+          ansible_connection: local

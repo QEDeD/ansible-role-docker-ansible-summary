@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Exercise a bounded pre-discovery persistence failure
+  hosts: callback_failure_single
+  gather_facts: false
+  environment:
+    DAS_CALLBACK_FAILURE_MODE: unavailable
+    PATH: >-
+      {{ lookup('env', 'DAS_CALLBACK_FAILURE_BIN') }}:{{ lookup('env', 'PATH') }}
+  tasks:
+    - name: DAS callback failure contract | Reject prepared persistence state
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: pre
+        docker_ansible_summary_instance_id: callback-persistence
+        docker_ansible_summary_scope:
+          - das-*
+        docker_ansible_summary_record_id: >-
+          {{ lookup('env', 'DAS_CALLBACK_FAILURE_RECORD_ID') }}
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_CALLBACK_FAILURE_ROOT') }}/{{ lookup('env', 'DAS_CALLBACK_FAILURE_STATE_DIR') }}
+        docker_ansible_summary_state_max_bytes: 1048576
+        docker_ansible_summary_report_mode: none

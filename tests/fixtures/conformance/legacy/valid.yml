@@ -1,0 +1,95 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+legacy_fixture_schema_version: 1
+variant: valid
+description: Three valid legacy sources provide mutually consistent evidence.
+
+sources:
+  display_state:
+    exists: true
+    parse_status: valid
+    synthetic_sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+    payload:
+      versions:
+        matrix-fixture-api: api:v2
+      displayed_at: "2025-12-01T10:00:00Z"
+  history:
+    exists: true
+    parse_status: valid
+    synthetic_sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+    payload:
+      last_versions:
+        matrix-fixture-api: api:v2
+      full_history:
+        matrix-fixture-api:
+          version: api:stale-projection
+          updates:
+            - previous: api:v1
+              current: api:stale-projection
+  simple_versions:
+    exists: true
+    parse_status: valid
+    synthetic_sha256: "3333333333333333333333333333333333333333333333333333333333333333"
+    payload:
+      matrix-fixture-api: api:v2
+
+prior_state:
+  latest_complete_post: null
+  revision: 0
+
+adapter_invocation:
+  instance_id: mdad-fixture
+  source_policy: null
+  reset_policy: null
+
+oracle:
+  validation:
+    result: valid
+    mutually_consistent: true
+    conflicting_sources: []
+  das_invoked: false
+  backups:
+    required:
+      - display_state
+      - history
+      - simple_versions
+    completed:
+      - display_state
+      - history
+      - simple_versions
+    raw_payloads_preserved: true
+  cutover_report:
+    outcome: written
+    assessed_at: "2026-01-22T10:00:00Z"
+    evidence_sources: [display_state, history, simple_versions]
+    source_hashes:
+      display_state: "1111111111111111111111111111111111111111111111111111111111111111"
+      history: "2222222222222222222222222222222222222222222222222222222222222222"
+      simple_versions: "3333333333333333333333333333333333333333333333333333333333333333"
+    backup_results:
+      display_state: completed
+      history: completed
+      simple_versions: completed
+    evidence_status: mutually_consistent
+    candidate_name_count: 1
+    raw_legacy_values_in_report: false
+  fresh_native_start_allowed: true
+  cutover_blocked: false
+  legacy_values_imported_into_das: false
+  latest_complete_post:
+    before: null
+    after: null
+  imported_service_history: false
+  ignored_source_fields: [history.full_history]
+  journal_status: null
+  das_persistence_outcome: not_attempted
+  second_identical_invocation:
+    cutover_report_outcome: unchanged
+    additional_backups_created: false
+    das_invoked: false
+  minimum_messages:
+    - "Legacy evidence mutually consistent"
+    - "Legacy values retained only in backup"
+    - "Native baseline remains uninitialized"

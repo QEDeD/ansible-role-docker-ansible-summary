@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: NONE
+#
+# SPDX-License-Identifier: CC0-1.0
+
+---
+callback_targets:
+  hosts:
+    alpha:
+      ansible_connection: local
+      ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      das_callback_container_name: das-alpha
+    bravo:
+      ansible_connection: local
+      ansible_python_interpreter: "{{ ansible_playbook_python }}"
+      das_callback_container_name: das-bravo

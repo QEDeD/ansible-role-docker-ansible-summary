@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: DAS | Observe and summarize Docker state
+  docker_ansible_summary:
+    enabled: "{{ docker_ansible_summary_enabled }}"
+    operation: "{{ docker_ansible_summary_operation | default(omit) }}"
+    instance_id: "{{ docker_ansible_summary_instance_id | default(omit) }}"
+    scope: "{{ docker_ansible_summary_scope | default(omit) }}"
+    record_id: "{{ docker_ansible_summary_record_id | default(omit) }}"
+    state_root: "{{ docker_ansible_summary_state_root | default(omit) }}"
+    journal_max_records: >-
+      {{ docker_ansible_summary_journal_max_records | default(omit) }}
+    state_max_bytes: >-
+      {{ docker_ansible_summary_state_max_bytes | default(omit) }}
+    correlation_id: >-
+      {{ docker_ansible_summary_correlation_id | default(omit) }}
+    report_mode: "{{ docker_ansible_summary_report_mode | default(omit) }}"
+    report_width: "{{ docker_ansible_summary_report_width | default(omit) }}"
+    discovery_timeout_seconds: >-
+      {{ docker_ansible_summary_discovery_timeout_seconds | default(omit) }}
+    failure_policy: >-
+      {{ docker_ansible_summary_failure_policy | default(omit) }}
+  register: docker_ansible_summary_result

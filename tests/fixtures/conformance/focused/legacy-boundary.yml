@@ -1,0 +1,173 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+fixture_family: focused_cases
+topic: legacy_boundary
+description: >-
+  Focused cases proving that lossy MDAD legacy evidence stays outside the
+  narrow external DAS role and its canonical state store.
+
+cases:
+  - id: core_role_rejects_legacy_initialize
+    component: external_role
+    invocation:
+      operation: legacy_initialize
+      instance_id: fixture-instance
+    oracle:
+      validation: failed
+      reason_code: unknown_operation
+      discovery_attempted: false
+      store_access_attempted: false
+      filesystem_side_effects: []
+      persistence_outcome: not_attempted
+
+  - id: canonical_store_rejects_legacy_field
+    component: external_role
+    candidate_store:
+      schema_version: 1
+      comparison_schema_version: 1
+      instance_id: fixture-instance
+      revision: 0
+      latest_complete_post: null
+      journal: []
+      recently_pruned_record_ids: []
+      legacy_baseline:
+        display_values:
+          fixture-api: api:v2
+    oracle:
+      validation: failed
+      reason_code: unknown_store_field
+      rejected_field: legacy_baseline
+      store_mutated: false
+      persistence_outcome: failed
+
+  - id: native_observation_does_not_read_cutover_report
+    component: external_role
+    external_context:
+      mdad_cutover_report:
+        outcome: written
+        source_hashes:
+          display_state: "1111111111111111111111111111111111111111111111111111111111111111"
+    invocation:
+      operation: pre
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      check_mode: false
+    oracle:
+      external_cutover_report_access_attempted: false
+      legacy_values_imported: false
+      observation_source: native_docker_discovery
+      persistence_outcome: committed
+
+  - id: first_native_post_after_cutover_establishes_baseline
+    component: external_role
+    prior_state:
+      exists: false
+    external_context:
+      mdad_cutover_report:
+        outcome: written
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: null
+      check_mode: false
+      observation_status: complete
+    oracle:
+      external_cutover_report_access_attempted: false
+      baseline_source: native_complete_post
+      baseline_advanced: true
+      journal_status: incomplete_pre
+      persistence_outcome: committed
+
+  - id: valid_legacy_assessment_writes_only_mdad_report
+    component: mdad_cutover_adapter
+    adapter_result:
+      validation: valid
+      existing_sources: [display_state, history, simple_versions]
+      backups_complete: true
+    oracle:
+      cutover_report_outcome: written
+      fresh_native_start_allowed: true
+      cutover_blocked: false
+      das_invoked: false
+      das_persistence_outcome: not_attempted
+      legacy_values_imported_into_das: false
+
+  - id: missing_legacy_sources_is_clean_fresh_start
+    component: mdad_cutover_adapter
+    adapter_result:
+      validation: no_legacy_state
+      existing_sources: []
+      backups_complete: true
+    oracle:
+      cutover_report_outcome: written
+      fresh_native_start_allowed: true
+      cutover_blocked: false
+      das_invoked: false
+      das_persistence_outcome: not_attempted
+
+  - id: malformed_legacy_source_is_backed_up_and_blocks
+    component: mdad_cutover_adapter
+    adapter_result:
+      validation: malformed_input
+      existing_sources: [display_state]
+      backups_complete: true
+    oracle:
+      cutover_report_outcome: written
+      fresh_native_start_allowed: false
+      cutover_blocked: true
+      source_files_unchanged: true
+      das_invoked: false
+      das_persistence_outcome: not_attempted
+
+  - id: unresolved_legacy_conflict_is_backed_up_and_blocks
+    component: mdad_cutover_adapter
+    adapter_result:
+      validation: valid_source_conflict
+      existing_sources: [display_state, history]
+      backups_complete: true
+      source_policy: null
+      reset_policy: null
+    oracle:
+      cutover_report_outcome: written
+      fresh_native_start_allowed: false
+      cutover_blocked: true
+      source_files_unchanged: true
+      das_invoked: false
+      das_persistence_outcome: not_attempted
+
+  - id: explicit_source_policy_resolves_legacy_conflict
+    component: mdad_cutover_adapter
+    adapter_result:
+      validation: conflict_resolved_by_policy
+      existing_sources: [display_state, history]
+      backups_complete: true
+      source_policy: display_state
+      reset_policy: null
+    oracle:
+      cutover_report_outcome: written
+      recorded_source_policy: display_state
+      cutover_report_backup_results:
+        display_state: completed
+        history: completed
+      fresh_native_start_allowed: true
+      cutover_blocked: false
+      source_files_unchanged: true
+      das_invoked: false
+      das_persistence_outcome: not_attempted
+
+  - id: repeated_assessment_is_idempotent
+    component: mdad_cutover_adapter
+    first_result:
+      cutover_report_outcome: written
+      backups_created: true
+    identical_retry:
+      source_hashes_unchanged: true
+      source_policy_unchanged: true
+    oracle:
+      cutover_report_outcome: unchanged
+      additional_backups_created: false
+      das_invoked: false
+      das_persistence_outcome: not_attempted

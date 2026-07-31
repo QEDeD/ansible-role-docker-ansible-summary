@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Verify bounded daemonless execution evidence
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - fixture-vars.yml
+  vars:
+    das_molecule_fake_log: "{{ das_molecule_fixture_root }}/docker-calls.jsonl"
+  tasks:
+    - name: Read fake Docker process evidence
+      ansible.builtin.slurp:
+        src: "{{ das_molecule_fake_log }}"
+      register: das_fake_log
+
+    - name: Inspect persisted run-window state
+      ansible.builtin.stat:
+        path: "{{ das_molecule_fixture_root }}/window-state"
+      register: das_window_state
+
+    - name: Inspect status-only state
+      ansible.builtin.stat:
+        path: "{{ das_molecule_fixture_root }}/status-state"
+      register: das_status_state
+
+    - name: Inspect check-mode state
+      ansible.builtin.stat:
+        path: "{{ das_molecule_fixture_root }}/check-state"
+      register: das_check_state
+
+    - name: Validate process and persistence boundaries
+      ansible.builtin.assert:
+        that:
+          # Four enabled observations, each with one catalogue and one
+          # one-container inspect process. The disabled call contributes zero.
+          - (das_fake_log.content | b64decode).splitlines() | length == 8
+          - das_window_state.stat.exists
+          - das_window_state.stat.isdir
+          - not das_status_state.stat.exists
+          - not das_check_state.stat.exists

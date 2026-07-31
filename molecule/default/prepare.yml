@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Prepare the daemonless Docker fixture
+  hosts: all
+  gather_facts: false
+  vars_files:
+    - fixture-vars.yml
+  tasks:
+    - name: Validate the Molecule-owned fixture root
+      ansible.builtin.assert:
+        that:
+          - das_molecule_ephemeral_directory | length > 1
+          - >-
+            das_molecule_fixture_root is
+            match('^/tmp/docker-ansible-summary-molecule-[0-9a-f]{64}$')
+        fail_msg: MOLECULE_EPHEMERAL_DIRECTORY must identify the scenario workspace
+
+    - name: Create the private daemonless fixture root
+      ansible.builtin.file:
+        path: "{{ das_molecule_fixture_root }}"
+        state: directory
+        mode: "0700"
+
+    - name: Create the fake executable directory
+      ansible.builtin.file:
+        path: "{{ das_molecule_fixture_root }}/bin"
+        state: directory
+        mode: "0700"
+
+    - name: Install the deterministic fake Docker CLI
+      ansible.builtin.copy:
+        src: docker
+        dest: "{{ das_molecule_fixture_root }}/bin/docker"
+        mode: "0700"

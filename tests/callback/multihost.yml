@@ -1,0 +1,47 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Exercise DAS callback presentation across concurrent local hosts
+  hosts: callback_targets
+  gather_facts: false
+  strategy: linear
+  environment:
+    DAS_FAKE_DOCKER_CONTAINER_NAME: "{{ das_callback_container_name }}"
+    DAS_FAKE_DOCKER_LOG: >-
+      {{ lookup('env', 'DAS_CALLBACK_ROOT') }}/docker-{{ inventory_hostname }}.jsonl
+    PATH: >-
+      {{ lookup('env', 'DAS_CALLBACK_BIN') }}:{{ lookup('env', 'PATH') }}
+  tasks:
+    - name: DAS callback contract | Render the omitted-mode final report
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: status
+        docker_ansible_summary_instance_id: "callback-{{ inventory_hostname }}"
+        docker_ansible_summary_scope:
+          - das-*
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_CALLBACK_ROOT') }}/state-{{ inventory_hostname }}
+        # Deliberately omit docker_ansible_summary_report_mode: its default
+        # must produce one final status block for each host.
+
+    - name: DAS callback contract | Validate the machine result
+      ansible.builtin.assert:
+        that:
+          - docker_ansible_summary_result.changed is false
+          - docker_ansible_summary_result.operation == "status"
+          - >-
+            docker_ansible_summary_result.instance_id
+            == "callback-" ~ inventory_hostname
+          - docker_ansible_summary_result.observation_status == "complete"
+          - docker_ansible_summary_result.persistence_outcome == "not_attempted"
+          - docker_ansible_summary_result.observation.containers | length == 1
+          - >-
+            docker_ansible_summary_result.observation.containers[
+              das_callback_container_name
+            ].name
+            == das_callback_container_name

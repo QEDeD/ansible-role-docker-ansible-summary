@@ -1,0 +1,111 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+scenario:
+  id: 21
+  title: Atomicity and concurrent-writer conflict
+
+observations:
+  a:
+    observation_id: obs-21-a
+    observed_at: "2026-01-21T09:00:00Z"
+    status: complete
+    scope: &scope
+      patterns: ["fixture-*"]
+      identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+      comparison_schema_version: 1
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+  b:
+    observation_id: obs-21-b
+    observed_at: "2026-01-21T10:00:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+  c:
+    observation_id: obs-21-c
+    observed_at: "2026-01-21T10:01:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+
+prior_state:
+  exists: true
+  revision: 21
+  instance_id: mdad-fixture
+  latest_complete_post: a
+  journal:
+    - record_id: record-21
+      status: open
+      pre_observation: b
+      expected_post_revision: 20
+  canonical_bytes_sha256: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+
+invocation:
+  operation: post
+  instance_id: mdad-fixture
+  scope: ["fixture-*"]
+  record_id: record-21
+  check_mode: false
+  b: b
+  c: c
+
+oracle:
+  between_observation_delta:
+    comparability: exact
+    comparison_schema_version: 1
+    from_observation_id: obs-21-a
+    to_observation_id: obs-21-b
+    changes: []
+    warnings: []
+  run_window_delta:
+    comparability: exact
+    comparison_schema_version: 1
+    from_observation_id: obs-21-b
+    to_observation_id: obs-21-c
+    changes: []
+    warnings: []
+  baseline:
+    advanced: false
+    before: obs-21-a
+    after: obs-21-a
+  journal:
+    status: open
+    proposed_status: complete
+  persistence:
+    outcome: conflict
+    expected_revision: 20
+    actual_revision: 21
+    canonical_bytes_sha256_after: "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  diagnostic_rendered_before_failure: true
+  full_report_rendered: false
+  full_machine_result_in_failed_callback: false
+  compact_failure_envelope_present: true
+  task_failed: true
+  failure_reason: revision_conflict
+  human:
+    minimum_messages:
+      - "Concurrent writer conflict"
+      - "Store unchanged"
+      - "Use a post-only observation or start a new pre/post window"
+  machine_result:
+    changed: false
+    failed: true
+    docker_ansible_summary_failure:
+      schema_version: 1
+      host: fixture-a.example.com
+      instance_id: mdad-fixture
+      operation: post
+      record_id: record-21
+      observation_status: complete
+      failure_reason: revision_conflict
+      observation_reason: null
+      persistence_outcome: conflict
+      committed_result_replayable: false
+      replay_guidance: null

@@ -1,0 +1,152 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Exercise the DAS action/module boundary locally
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  environment:
+    PATH: "{{ lookup('env', 'DAS_TEST_BIN') }}:{{ lookup('env', 'PATH') }}"
+    DAS_FAKE_DOCKER_LOG: "{{ lookup('env', 'DAS_TEST_DOCKER_LOG') }}"
+  pre_tasks:
+    - name: DAS test | Reset fake Docker evidence
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'DAS_TEST_DOCKER_LOG') }}"
+        state: absent
+  tasks:
+    - name: DAS test | Disabled import needs no other public input
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_enabled: false
+        docker_ansible_summary_mock_mode: deliberately-ignored-when-disabled
+
+    - name: DAS test | Preserve disabled result
+      ansible.builtin.set_fact:
+        das_test_disabled_result: "{{ docker_ansible_summary_result }}"
+
+    - name: DAS test | Validate disabled result
+      ansible.builtin.assert:
+        that:
+          - das_test_disabled_result.changed is false
+          - das_test_disabled_result.skipped is true
+          - das_test_disabled_result.observation is none
+          - das_test_disabled_result.persistence_outcome == "not_attempted"
+
+    - name: DAS test | Observe a store-free status
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: status
+        docker_ansible_summary_instance_id: local-status
+        docker_ansible_summary_scope: das-*
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_TEST_STATE_ROOT') }}/status
+        docker_ansible_summary_report_mode: none
+
+    - name: DAS test | Preserve status result
+      ansible.builtin.set_fact:
+        das_test_status_result: "{{ docker_ansible_summary_result }}"
+
+    - name: DAS test | Inspect status-only state root
+      ansible.builtin.stat:
+        path: "{{ lookup('env', 'DAS_TEST_STATE_ROOT') }}/status"
+      register: das_test_status_state
+
+    - name: DAS test | Validate status result and no-write behavior
+      ansible.builtin.assert:
+        that:
+          - das_test_status_result.changed is false
+          - das_test_status_result.operation == "status"
+          - das_test_status_result.observation_status == "complete"
+          - das_test_status_result.observation.containers | length == 1
+          - das_test_status_result.persistence_outcome == "not_attempted"
+          - not das_test_status_state.stat.exists
+
+    - name: DAS test | Observe a store-free check-mode pre
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      check_mode: true
+      vars:
+        docker_ansible_summary_operation: pre
+        docker_ansible_summary_instance_id: local-check
+        docker_ansible_summary_scope: das-*
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_TEST_STATE_ROOT') }}/check
+        docker_ansible_summary_report_mode: final
+
+    - name: DAS test | Inspect check-mode state root
+      ansible.builtin.stat:
+        path: "{{ lookup('env', 'DAS_TEST_STATE_ROOT') }}/check"
+      register: das_test_check_state
+
+    - name: DAS test | Validate check-mode result and no-write behavior
+      ansible.builtin.assert:
+        that:
+          - docker_ansible_summary_result.changed is false
+          - docker_ansible_summary_result.simulated is true
+          - docker_ansible_summary_result.record_id is none
+          - docker_ansible_summary_result.persistence_outcome == "not_attempted"
+          - not das_test_check_state.stat.exists
+
+    - name: DAS test | Render one final status table
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: status
+        docker_ansible_summary_instance_id: local-table
+        docker_ansible_summary_scope: das-*
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_TEST_STATE_ROOT') }}/table
+        docker_ansible_summary_report_mode: final
+
+    - name: DAS test | Exercise a bounded invalid-input failure
+      block:
+        - name: DAS test | Reject an unknown input without discovery
+          ansible.builtin.import_role:
+            name: docker_ansible_summary
+            tasks_from: observe
+            allow_duplicates: true
+          vars:
+            docker_ansible_summary_operation: status
+            docker_ansible_summary_instance_id: local-invalid
+            docker_ansible_summary_scope: das-*
+            docker_ansible_summary_unknown_probe: value-must-not-be-printed
+      rescue:
+        - name: DAS test | Preserve the bounded input failure
+          ansible.builtin.set_fact:
+            das_test_input_failure: "{{ docker_ansible_summary_result }}"
+
+    - name: DAS test | Read bounded fake Docker evidence
+      ansible.builtin.slurp:
+        src: "{{ lookup('env', 'DAS_TEST_DOCKER_LOG') }}"
+      register: das_test_docker_log
+
+    - name: DAS test | Validate input failure and constant process surface
+      ansible.builtin.assert:
+        that:
+          - das_test_input_failure.failed is true
+          - >-
+            das_test_input_failure.docker_ansible_summary_failure.failure_reason
+            == "invalid_input"
+          - >-
+            das_test_input_failure.docker_ansible_summary_failure.observation
+            is not defined
+          - >-
+            "value-must-not-be-printed"
+            not in (das_test_input_failure | to_json)
+          # Status, check-mode pre, and final-table status each use exactly
+          # one catalogue plus one inspect process. Invalid and disabled calls
+          # use none.
+          - >-
+            (das_test_docker_log.content | b64decode).splitlines() | length == 6

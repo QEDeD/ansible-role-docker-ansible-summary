@@ -1,0 +1,75 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+legacy_fixture_schema_version: 1
+variant: valid_source_conflict
+description: Valid sources disagree and no explicit resolution policy exists.
+
+sources:
+  display_state:
+    exists: true
+    parse_status: valid
+    synthetic_sha256: "7777777777777777777777777777777777777777777777777777777777777777"
+    payload:
+      versions:
+        matrix-fixture-api: api:v2
+      displayed_at: "2025-12-01T10:00:00Z"
+  history:
+    exists: true
+    parse_status: valid
+    synthetic_sha256: "8888888888888888888888888888888888888888888888888888888888888888"
+    payload:
+      last_versions:
+        matrix-fixture-api: api:v3
+  simple_versions:
+    exists: false
+
+prior_state:
+  latest_complete_post: null
+  revision: 0
+
+adapter_invocation:
+  instance_id: mdad-fixture
+  source_policy: null
+  reset_policy: null
+
+oracle:
+  validation:
+    result: valid_source_conflict
+    mutually_consistent: false
+    conflicting_sources: [display_state, history]
+    conflicting_names: [matrix-fixture-api]
+  das_invoked: false
+  backups:
+    required: [display_state, history]
+    completed: [display_state, history]
+    raw_payloads_preserved: true
+  cutover_report:
+    outcome: written
+    evidence_status: valid_source_conflict
+    evidence_sources: [display_state, history]
+    source_hashes:
+      display_state: "7777777777777777777777777777777777777777777777777777777777777777"
+      history: "8888888888888888888888888888888888888888888888888888888888888888"
+    backup_results:
+      display_state: completed
+      history: completed
+    raw_legacy_values_in_report: false
+  fresh_native_start_allowed: false
+  cutover_blocked: true
+  legacy_values_imported_into_das: false
+  latest_complete_post:
+    before: null
+    after: null
+  source_files_unchanged:
+    display_state:
+      synthetic_sha256: "7777777777777777777777777777777777777777777777777777777777777777"
+    history:
+      synthetic_sha256: "8888888888888888888888888888888888888888888888888888888888888888"
+  journal_status: null
+  das_persistence_outcome: not_attempted
+  minimum_messages:
+    - "Valid legacy sources conflict"
+    - "Sources backed up; DAS unchanged"
+    - "Choose an explicit source or reset policy"

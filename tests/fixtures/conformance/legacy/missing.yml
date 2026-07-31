@@ -1,0 +1,54 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+legacy_fixture_schema_version: 1
+variant: missing
+description: No legacy fact file exists; absence is not an empty baseline.
+
+sources:
+  display_state:
+    exists: false
+  history:
+    exists: false
+  simple_versions:
+    exists: false
+
+prior_state:
+  latest_complete_post: null
+  revision: 0
+
+adapter_invocation:
+  instance_id: mdad-fixture
+  source_policy: null
+  reset_policy: null
+
+oracle:
+  validation:
+    result: no_legacy_state
+    mutually_consistent: null
+    conflicting_sources: []
+  das_invoked: false
+  backups:
+    required: []
+    completed: []
+  cutover_report:
+    outcome: written
+    evidence_status: no_legacy_state
+    evidence_sources: []
+    source_hashes: {}
+    backup_results: {}
+    raw_legacy_values_in_report: false
+  fresh_native_start_allowed: true
+  cutover_blocked: false
+  legacy_values_imported_into_das: false
+  latest_complete_post:
+    before: null
+    after: null
+  imported_service_history: false
+  journal_status: null
+  das_persistence_outcome: not_attempted
+  backup_artifacts_created: []
+  minimum_messages:
+    - "No legacy state found"
+    - "DAS starts from native evidence"

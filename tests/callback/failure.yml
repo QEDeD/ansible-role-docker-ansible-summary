@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Exercise the bounded DAS failed-callback contract
+  hosts: callback_failure_single
+  gather_facts: false
+  environment:
+    PATH: >-
+      {{ lookup('env', 'DAS_CALLBACK_FAILURE_BIN') }}:{{ lookup('env', 'PATH') }}
+  tasks:
+    - name: DAS callback failure contract | Fail after an unavailable observation
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: status
+        docker_ansible_summary_instance_id: callback-failure
+        docker_ansible_summary_scope:
+          - das-*
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_CALLBACK_FAILURE_ROOT') }}/state
+        docker_ansible_summary_report_mode: none
+        docker_ansible_summary_failure_policy: fail_after_report

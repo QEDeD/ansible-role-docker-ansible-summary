@@ -1,0 +1,132 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+scenario:
+  id: 15
+  title: Complete pre with missing or incomplete post
+
+observations:
+  a:
+    observation_id: obs-15-a
+    observed_at: "2026-01-15T09:00:00Z"
+    status: complete
+    scope: &scope
+      patterns: ["fixture-*"]
+      identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+      comparison_schema_version: 1
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      fixture-api: &api
+        name: fixture-api
+        container_id: "0000000000000000000000000000000000000000000000000000000000000096"
+        full_image_reference: registry.example.com/fixture/api:v1
+        image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        runtime_state: running
+        created_at: "2026-01-01T09:00:00Z"
+        started_at: "2026-01-01T09:00:10Z"
+        finished_at: null
+        restart_count: 0
+  b:
+    observation_id: obs-15-b
+    observed_at: "2026-01-15T10:00:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      fixture-api: *api
+  c:
+    observation_id: obs-15-c
+    observed_at: "2026-01-15T10:01:00Z"
+    status: partial
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: ["fixture-api.image_id"]
+    reason_code: required_field_missing
+    warnings:
+      - "Required container evidence is missing; inspect metadata_gaps"
+    containers:
+      fixture-api:
+        name: fixture-api
+        container_id: "0000000000000000000000000000000000000000000000000000000000000096"
+        full_image_reference: registry.example.com/fixture/api:v1
+        image_id: null
+        runtime_state: running
+        created_at: "2026-01-01T09:00:00Z"
+        started_at: "2026-01-01T09:00:10Z"
+        finished_at: null
+        restart_count: 0
+
+prior_state:
+  exists: true
+  revision: 15
+  instance_id: mdad-fixture
+  latest_complete_post: a
+  journal:
+    - record_id: record-15
+      status: open
+      pre_observation: b
+      expected_post_revision: 15
+
+invocation:
+  operation: post
+  instance_id: mdad-fixture
+  scope: ["fixture-*"]
+  record_id: record-15
+  check_mode: false
+  b: b
+  c: c
+
+oracle:
+  missing_post_variant:
+    post_invocation_committed: false
+    c: null
+    run_window_delta: null
+    baseline_advanced: false
+    journal_status: open
+    minimum_messages:
+      - "Post-observation not recorded"
+      - "Run record remains open"
+  between_observation_delta:
+    comparability: exact
+    comparison_schema_version: 1
+    from_observation_id: obs-15-a
+    to_observation_id: obs-15-b
+    changes:
+      - container_name: fixture-api
+        primary_kind: unchanged
+        kinds: [unchanged]
+    warnings: []
+  run_window_delta:
+    comparability: incomplete
+    comparison_schema_version: 1
+    from_observation_id: obs-15-b
+    to_observation_id: obs-15-c
+    changes: []
+    warnings: []
+  baseline:
+    advanced: false
+    before: obs-15-a
+    after: obs-15-a
+  journal:
+    status: incomplete_post
+  persistence:
+    outcome: committed
+  human:
+    minimum_messages:
+      - "Post-observation incomplete"
+      - "Baseline not advanced"
+      - "fixture-api.image_id"
+  machine_result:
+    schema_version: 1
+    operation: post
+    instance_id: mdad-fixture
+    record_id: record-15
+    observation_status: partial
+    observation: c
+    scope_identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+    baseline_advanced: false
+    journal_status: incomplete_post
+    persistence_outcome: committed

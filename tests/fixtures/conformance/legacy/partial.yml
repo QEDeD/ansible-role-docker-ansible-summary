@@ -1,0 +1,82 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+legacy_fixture_schema_version: 1
+variant: partial
+description: One source is absent and two valid sources agree.
+
+sources:
+  display_state:
+    exists: false
+  history:
+    exists: true
+    parse_status: valid
+    synthetic_sha256: "4444444444444444444444444444444444444444444444444444444444444444"
+    payload:
+      last_versions:
+        matrix-fixture-worker: worker:v3
+      full_history:
+        matrix-fixture-worker:
+          version: worker:stale-projection
+          updates:
+            - previous: worker:v2
+              current: worker:stale-projection
+  simple_versions:
+    exists: true
+    parse_status: valid
+    synthetic_sha256: "5555555555555555555555555555555555555555555555555555555555555555"
+    payload:
+      matrix-fixture-worker: worker:v3
+
+prior_state:
+  latest_complete_post: null
+  revision: 0
+
+adapter_invocation:
+  instance_id: mdad-fixture
+  source_policy: null
+  reset_policy: null
+
+oracle:
+  validation:
+    result: valid_partial_source_set
+    mutually_consistent: true
+    missing_sources: [display_state]
+    conflicting_sources: []
+  das_invoked: false
+  backups:
+    required: [history, simple_versions]
+    completed: [history, simple_versions]
+    raw_payloads_preserved: true
+  cutover_report:
+    outcome: written
+    assessed_at: "2026-01-22T11:00:00Z"
+    evidence_sources: [history, simple_versions]
+    source_hashes:
+      history: "4444444444444444444444444444444444444444444444444444444444444444"
+      simple_versions: "5555555555555555555555555555555555555555555555555555555555555555"
+    backup_results:
+      history: completed
+      simple_versions: completed
+    evidence_status: mutually_consistent_partial_source_set
+    candidate_name_count: 1
+    raw_legacy_values_in_report: false
+  fresh_native_start_allowed: true
+  cutover_blocked: false
+  legacy_values_imported_into_das: false
+  latest_complete_post:
+    before: null
+    after: null
+  imported_service_history: false
+  ignored_source_fields: [history.full_history]
+  journal_status: null
+  das_persistence_outcome: not_attempted
+  second_identical_invocation:
+    cutover_report_outcome: unchanged
+    additional_backups_created: false
+    das_invoked: false
+  minimum_messages:
+    - "Legacy source display_state missing"
+    - "Available evidence mutually consistent"
+    - "DAS starts from native evidence"

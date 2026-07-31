@@ -1,0 +1,16 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+# These are the eight v1 inputs with defaults. The five omitted-by-default
+# inputs (operation, instance_id, scope, record_id, and correlation_id) must
+# remain undefined so a disabled invocation can short-circuit safely.
+docker_ansible_summary_enabled: true
+docker_ansible_summary_state_root: /var/lib/docker-ansible-summary
+docker_ansible_summary_journal_max_records: 30
+docker_ansible_summary_state_max_bytes: 16777216
+docker_ansible_summary_report_mode: final
+docker_ansible_summary_report_width: 120
+docker_ansible_summary_discovery_timeout_seconds: 30
+docker_ansible_summary_failure_policy: report

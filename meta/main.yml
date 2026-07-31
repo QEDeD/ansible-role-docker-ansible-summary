@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: NONE
+#
+# SPDX-License-Identifier: CC0-1.0
+
+---
+galaxy_info:
+  author: QEDeD
+  description: Observe and summarize bounded Docker state before and after an Ansible run window
+  license: AGPL-3.0-or-later
+  # Lowest locally executed lane; the proposed 2.15.1 floor remains unproved.
+  min_ansible_version: "2.20.1"
+  namespace: qeded
+  role_name: docker_ansible_summary
+  galaxy_tags:
+    - docker
+    - observability
+    - diagnostics
+    - reporting
+
+dependencies: []
+allow_duplicates: true

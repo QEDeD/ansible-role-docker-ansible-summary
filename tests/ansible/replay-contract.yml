@@ -1,0 +1,105 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Prove retained post replay through the real action and module
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  any_errors_fatal: true
+  environment:
+    DAS_FAKE_DOCKER_CONTAINER_NAME: das-replay-fixture
+    DAS_FAKE_DOCKER_LOG: "{{ lookup('env', 'DAS_REPLAY_DOCKER_LOG') }}"
+    PATH: >-
+      {{ lookup('env', 'DAS_REPLAY_BIN') }}:{{ lookup('env', 'PATH') }}
+  vars:
+    das_replay_instance_id: replay-proof
+    das_replay_state_root: "{{ lookup('env', 'DAS_REPLAY_STATE_ROOT') }}"
+  tasks:
+    - name: DAS replay contract | Capture the pre observation
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: pre
+        docker_ansible_summary_instance_id: "{{ das_replay_instance_id }}"
+        docker_ansible_summary_scope:
+          - das-replay-*
+        docker_ansible_summary_state_root: "{{ das_replay_state_root }}"
+        docker_ansible_summary_report_mode: final
+
+    - name: DAS replay contract | Preserve the pre result
+      ansible.builtin.set_fact:
+        das_replay_pre_result: "{{ docker_ansible_summary_result }}"
+        das_replay_record_id: "{{ docker_ansible_summary_result.record_id }}"
+
+    - name: DAS replay contract | Capture the first post observation
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: post
+        docker_ansible_summary_instance_id: "{{ das_replay_instance_id }}"
+        docker_ansible_summary_scope:
+          - das-replay-*
+        docker_ansible_summary_record_id: "{{ das_replay_record_id }}"
+        docker_ansible_summary_state_root: "{{ das_replay_state_root }}"
+        docker_ansible_summary_report_mode: final
+
+    - name: DAS replay contract | Preserve the first post result
+      ansible.builtin.set_fact:
+        das_replay_first_post_result: "{{ docker_ansible_summary_result }}"
+
+    - name: DAS replay contract | Replay the identical retained post
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: post
+        docker_ansible_summary_instance_id: "{{ das_replay_instance_id }}"
+        docker_ansible_summary_scope:
+          - das-replay-*
+        docker_ansible_summary_record_id: "{{ das_replay_record_id }}"
+        docker_ansible_summary_state_root: "{{ das_replay_state_root }}"
+        docker_ansible_summary_report_mode: final
+
+    - name: DAS replay contract | Validate retained replay semantics
+      ansible.builtin.assert:
+        that:
+          - das_replay_pre_result.changed is false
+          - das_replay_pre_result.operation == "pre"
+          - das_replay_pre_result.persistence_outcome == "committed"
+          - das_replay_pre_result.replay_outcome is none
+          - das_replay_pre_result.journal_status == "open"
+          - das_replay_record_id is match("^das-[0-9a-f]{32}$")
+          - das_replay_first_post_result.changed is false
+          - das_replay_first_post_result.operation == "post"
+          - das_replay_first_post_result.record_id == das_replay_record_id
+          - das_replay_first_post_result.persistence_outcome == "committed"
+          - das_replay_first_post_result.replay_outcome is none
+          - das_replay_first_post_result.journal_status == "complete"
+          - >-
+            das_replay_first_post_result.run_window_delta.comparability
+            == "exact"
+          - docker_ansible_summary_result.changed is false
+          - docker_ansible_summary_result.operation == "post"
+          - docker_ansible_summary_result.record_id == das_replay_record_id
+          - docker_ansible_summary_result.persistence_outcome == "not_attempted"
+          - docker_ansible_summary_result.replay_outcome == "idempotent"
+          - docker_ansible_summary_result.journal_status == "complete"
+          - >-
+            docker_ansible_summary_result.observation
+            == das_replay_first_post_result.observation
+          - >-
+            docker_ansible_summary_result.between_observation_delta
+            == das_replay_first_post_result.between_observation_delta
+          - >-
+            docker_ansible_summary_result.run_window_delta
+            == das_replay_first_post_result.run_window_delta
+          - >-
+            docker_ansible_summary_result.baseline
+            == das_replay_first_post_result.baseline

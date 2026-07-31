@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: NONE
+#
+# SPDX-License-Identifier: CC0-1.0
+
+---
+handoff_targets:
+  hosts:
+    alpha:
+      ansible_connection: local
+      ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    bravo:
+      ansible_connection: local
+      ansible_python_interpreter: "{{ ansible_playbook_python }}"

@@ -1,0 +1,112 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+scenario:
+  id: 17
+  title: Docker unavailable
+
+observations:
+  a:
+    observation_id: obs-17-a
+    observed_at: "2026-01-17T09:00:00Z"
+    status: complete
+    scope: &scope
+      patterns: ["fixture-*"]
+      identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+      comparison_schema_version: 1
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      fixture-api: &api
+        name: fixture-api
+        container_id: "00000000000000000000000000000000000000000000000000000000000000aa"
+        full_image_reference: registry.example.com/fixture/api:v1
+        image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        runtime_state: running
+        created_at: "2026-01-01T09:00:00Z"
+        started_at: "2026-01-01T09:00:10Z"
+        finished_at: null
+        restart_count: 0
+  b:
+    observation_id: obs-17-b
+    observed_at: "2026-01-17T10:00:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      fixture-api: *api
+  c:
+    observation_id: obs-17-c
+    observed_at: "2026-01-17T10:01:00Z"
+    status: unavailable
+    scope: *scope
+    discovery_backend: docker_cli_v1
+    metadata_gaps: []
+    containers: null
+    reason_code: docker_unavailable
+    warnings: ["Docker daemon was unavailable"]
+
+prior_state:
+  exists: true
+  revision: 17
+  instance_id: mdad-fixture
+  latest_complete_post: a
+  journal:
+    - record_id: record-17
+      status: open
+      pre_observation: b
+      expected_post_revision: 17
+
+invocation:
+  operation: post
+  instance_id: mdad-fixture
+  scope: ["fixture-*"]
+  record_id: record-17
+  check_mode: false
+  b: b
+  c: c
+
+oracle:
+  between_observation_delta:
+    comparability: exact
+    comparison_schema_version: 1
+    from_observation_id: obs-17-a
+    to_observation_id: obs-17-b
+    changes:
+      - container_name: fixture-api
+        primary_kind: unchanged
+        kinds: [unchanged]
+    warnings: []
+  run_window_delta:
+    comparability: incomplete
+    comparison_schema_version: 1
+    from_observation_id: obs-17-b
+    to_observation_id: obs-17-c
+    changes: []
+    warnings: []
+  baseline:
+    advanced: false
+    before: obs-17-a
+    after: obs-17-a
+  journal:
+    status: incomplete_post
+  persistence:
+    outcome: committed
+  human:
+    minimum_messages:
+      - "Docker unavailable"
+      - "No removals inferred"
+      - "Baseline not advanced"
+  machine_result:
+    schema_version: 1
+    operation: post
+    instance_id: mdad-fixture
+    record_id: record-17
+    observation_status: unavailable
+    observation: c
+    scope_identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+    baseline_advanced: false
+    journal_status: incomplete_post
+    persistence_outcome: committed

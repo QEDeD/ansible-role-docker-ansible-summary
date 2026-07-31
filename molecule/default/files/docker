@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+"""Deterministic fake Docker CLI for the default daemonless scenario."""
+
+from __future__ import print_function
+
+import json
+import os
+import sys
+
+
+CONTAINER_ID = "a" * 64
+IMAGE_ID = "sha256:" + ("b" * 64)
+CATALOGUE_FORMAT = '{"id":{{json .ID}},"name":{{json .Names}}}'
+INSPECT_FORMAT = (
+    '{"container_id":{{json .Id}},"created_at":{{json .Created}},'
+    '"finished_at":{{json .State.FinishedAt}},'
+    '"full_image_reference":{{json .Config.Image}},'
+    '"image_id":{{json .Image}},"name":{{json .Name}},'
+    '"restart_count":{{json .RestartCount}},'
+    '"runtime_state":{{json .State.Status}},'
+    '"started_at":{{json .State.StartedAt}}}'
+)
+
+
+def _record_call(arguments):
+    log_path = os.environ.get("DAS_FAKE_DOCKER_LOG")
+    if not log_path:
+        return
+    with open(log_path, "a") as log_file:
+        log_file.write(json.dumps(arguments, separators=(",", ":")) + "\n")
+
+
+def _fixture_name():
+    return os.environ.get("DAS_FAKE_DOCKER_CONTAINER_NAME", "das-fixture")
+
+
+def _catalogue(container_name):
+    print(
+        json.dumps(
+            {"id": CONTAINER_ID, "name": container_name},
+            separators=(",", ":"),
+        )
+    )
+
+
+def _inspect(identifiers, container_name):
+    if identifiers != [CONTAINER_ID]:
+        return 2
+    print(
+        json.dumps(
+            {
+                "container_id": CONTAINER_ID,
+                "created_at": "2026-01-01T00:00:00Z",
+                "finished_at": "2026-01-01T00:02:00Z",
+                "full_image_reference": (
+                    "registry.example.invalid:5000/team/example:1.0"
+                ),
+                "image_id": IMAGE_ID,
+                "name": "/" + container_name,
+                "restart_count": 0,
+                "runtime_state": "exited",
+                "started_at": "2026-01-01T00:01:00Z",
+            },
+            separators=(",", ":"),
+        )
+    )
+    return 0
+
+
+def main():
+    arguments = sys.argv[1:]
+    container_name = _fixture_name()
+    _record_call(arguments)
+
+    if arguments == [
+        "container",
+        "ls",
+        "--all",
+        "--no-trunc",
+        "--format",
+        CATALOGUE_FORMAT,
+    ]:
+        _catalogue(container_name)
+        return 0
+
+    if arguments[:4] == [
+        "container",
+        "inspect",
+        "--format",
+        INSPECT_FORMAT,
+    ]:
+        return _inspect(arguments[4:], container_name)
+
+    print("unsupported fake Docker invocation", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

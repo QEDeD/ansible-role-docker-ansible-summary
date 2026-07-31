@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Prepare an existing store for persistence fault callbacks
+  hosts: callback_failure_single
+  gather_facts: false
+  environment:
+    DAS_CALLBACK_FAILURE_INJECTION: none
+    DAS_CALLBACK_FAILURE_MODE: empty
+    PATH: >-
+      {{ lookup('env', 'DAS_CALLBACK_FAILURE_BIN') }}:{{ lookup('env', 'PATH') }}
+  tasks:
+    - name: DAS callback failure contract | Commit the prior store
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: pre
+        docker_ansible_summary_instance_id: callback-injection
+        docker_ansible_summary_scope:
+          - das-*
+        docker_ansible_summary_record_id: callback-seed-record
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_CALLBACK_FAILURE_ROOT') }}/injected-state
+        docker_ansible_summary_report_mode: none

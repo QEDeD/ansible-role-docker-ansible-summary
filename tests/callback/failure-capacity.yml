@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Exercise post-commit presentation-capacity failure
+  hosts: callback_failure_single
+  gather_facts: false
+  environment:
+    DAS_CALLBACK_FAILURE_MODE: capacity
+    PATH: >-
+      {{ lookup('env', 'DAS_CALLBACK_FAILURE_BIN') }}:{{ lookup('env', 'PATH') }}
+  tasks:
+    - name: DAS callback failure contract | Fail boundedly after commit
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: post
+        docker_ansible_summary_instance_id: callback-capacity
+        docker_ansible_summary_scope:
+          - das-*
+        docker_ansible_summary_record_id: callback-capacity-record
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_CALLBACK_FAILURE_ROOT') }}/capacity-state
+        docker_ansible_summary_report_mode: each
+        docker_ansible_summary_report_width: 100

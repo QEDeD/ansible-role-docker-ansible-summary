@@ -1,0 +1,9 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Leave local target lifecycle to Molecule
+  hosts: localhost
+  gather_facts: false
+  tasks: []

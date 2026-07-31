@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: DAS | Run the observation entry point
+  ansible.builtin.import_tasks: observe.yml

@@ -1,0 +1,11 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+das_molecule_ephemeral_directory: >-
+  {{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}
+das_molecule_fixture_token: >-
+  {{ das_molecule_ephemeral_directory | hash('sha256') }}
+das_molecule_fixture_root: >-
+  /tmp/docker-ansible-summary-molecule-{{ das_molecule_fixture_token }}

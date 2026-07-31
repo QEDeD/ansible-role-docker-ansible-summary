@@ -1,0 +1,49 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Prove structured stdout is not a DAS human-report transport
+  hosts: callback_structured
+  gather_facts: false
+  strategy: linear
+  environment:
+    DAS_FAKE_DOCKER_CONTAINER_NAME: das-structured
+    PATH: >-
+      {{ lookup('env', 'DAS_STRUCTURED_CALLBACK_BIN') }}:{{ lookup('env', 'PATH') }}
+  tasks:
+    - name: DAS structured callback | Emit one human status report
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: status
+        docker_ansible_summary_instance_id: callback-structured
+        docker_ansible_summary_scope:
+          - das-*
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_STRUCTURED_CALLBACK_ROOT') }}/unused-state
+        docker_ansible_summary_report_mode: final
+
+    - name: DAS structured callback | Consume the registered machine result
+      ansible.builtin.assert:
+        that:
+          - docker_ansible_summary_result.changed is false
+          - docker_ansible_summary_result.schema_version == 1
+          - docker_ansible_summary_result.operation == "status"
+          - >-
+            docker_ansible_summary_result.instance_id
+            == "callback-structured"
+          - docker_ansible_summary_result.observation_status == "complete"
+          - docker_ansible_summary_result.record_id is none
+          - docker_ansible_summary_result.simulated is false
+          - docker_ansible_summary_result.skipped is false
+          - >-
+            docker_ansible_summary_result.persistence_outcome
+            == "not_attempted"
+          - >-
+            docker_ansible_summary_result.observation.containers[
+              "das-structured"
+            ].name
+            == "das-structured"

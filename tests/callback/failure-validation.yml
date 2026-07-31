@@ -1,0 +1,22 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Exercise action-side validation failure through the real callback
+  hosts: callback_failure_single
+  gather_facts: false
+  tasks:
+    - name: DAS callback failure contract | Reject an invalid operation
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: invalid-operation
+        docker_ansible_summary_instance_id: callback-validation
+        docker_ansible_summary_scope:
+          - das-*
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_CALLBACK_FAILURE_ROOT') }}/unused-state
+        docker_ansible_summary_report_mode: none

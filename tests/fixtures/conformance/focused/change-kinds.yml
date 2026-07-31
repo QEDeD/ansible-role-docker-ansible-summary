@@ -1,0 +1,317 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+fixture_family: focused_cases
+topic: change_kinds
+description: >-
+  Pure comparison cases for supported kinds not isolated by the numbered
+  lifecycle scenarios.
+
+shared:
+  scope: &scope
+    patterns: ["fixture-*"]
+    identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+    comparison_schema_version: 1
+  base_container: &base_container
+    name: fixture-api
+    container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+    full_image_reference: registry.example.com/fixture/api:v1
+    image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    runtime_state: running
+    created_at: "2026-01-01T09:00:00Z"
+    started_at: "2026-01-01T09:00:10Z"
+    finished_at: null
+    restart_count: 0
+
+cases:
+  - id: restart_evidence_comparability_matrix
+    input_variants:
+      changed_start_unknown_count:
+        same_container_id: true
+        before_runtime_state: running
+        after_runtime_state: running
+        before_started_at: "2026-01-01T09:00:10Z"
+        after_started_at: "2026-01-01T09:05:10Z"
+        before_restart_count: null
+        after_restart_count: null
+        unrelated_metadata_gaps: []
+      equal_start_increased_count:
+        same_container_id: true
+        before_runtime_state: running
+        after_runtime_state: running
+        before_started_at: "2026-01-01T09:00:10Z"
+        after_started_at: "2026-01-01T09:00:10Z"
+        before_restart_count: 0
+        after_restart_count: 1
+        unrelated_metadata_gaps: []
+      equal_start_equal_count:
+        same_container_id: true
+        before_runtime_state: running
+        after_runtime_state: running
+        before_started_at: "2026-01-01T09:00:10Z"
+        after_started_at: "2026-01-01T09:00:10Z"
+        before_restart_count: 0
+        after_restart_count: 0
+        unrelated_metadata_gaps: []
+      unknown_start_equal_count:
+        same_container_id: true
+        before_runtime_state: running
+        after_runtime_state: running
+        before_started_at: null
+        after_started_at: null
+        before_restart_count: 0
+        after_restart_count: 0
+        unrelated_metadata_gaps: []
+      equal_start_unknown_count:
+        same_container_id: true
+        before_runtime_state: running
+        after_runtime_state: running
+        before_started_at: "2026-01-01T09:00:10Z"
+        after_started_at: "2026-01-01T09:00:10Z"
+        before_restart_count: null
+        after_restart_count: null
+        unrelated_metadata_gaps: []
+      created_finished_gaps_only:
+        same_container_id: true
+        before_runtime_state: running
+        after_runtime_state: running
+        before_started_at: "2026-01-01T09:00:10Z"
+        after_started_at: "2026-01-01T09:00:10Z"
+        before_restart_count: 0
+        after_restart_count: 0
+        unrelated_metadata_gaps:
+          - fixture-api.created_at
+          - fixture-api.finished_at
+      inactive_to_active_unknown_restart_channels:
+        same_container_id: true
+        before_runtime_state: stopped
+        after_runtime_state: running
+        before_started_at: null
+        after_started_at: null
+        before_restart_count: null
+        after_restart_count: null
+        unrelated_metadata_gaps: []
+      recreated_unknown_restart_channels:
+        same_container_id: false
+        before_runtime_state: running
+        after_runtime_state: running
+        before_started_at: null
+        after_started_at: null
+        before_restart_count: null
+        after_restart_count: null
+        unrelated_metadata_gaps: []
+    oracle:
+      changed_start_unknown_count:
+        start_channel: positive
+        restart_count_channel: unknown
+        comparability: exact
+        primary_kind: restarted
+        kinds: [restarted]
+      equal_start_increased_count:
+        start_channel: negative
+        restart_count_channel: positive
+        comparability: exact
+        primary_kind: restarted
+        kinds: [restarted]
+      equal_start_equal_count:
+        start_channel: negative
+        restart_count_channel: negative
+        comparability: exact
+        primary_kind: unchanged
+        kinds: [unchanged]
+      unknown_start_equal_count:
+        start_channel: unknown
+        restart_count_channel: negative
+        comparability: degraded
+        primary_kind: unchanged
+        kinds: [unchanged]
+      equal_start_unknown_count:
+        start_channel: negative
+        restart_count_channel: unknown
+        comparability: degraded
+        primary_kind: unchanged
+        kinds: [unchanged]
+      created_finished_gaps_only:
+        start_channel: negative
+        restart_count_channel: negative
+        comparability: exact
+        primary_kind: unchanged
+        kinds: [unchanged]
+      inactive_to_active_unknown_restart_channels:
+        start_channel: not_applicable
+        restart_count_channel: not_applicable
+        comparability: exact
+        primary_kind: started
+        kinds: [started]
+      recreated_unknown_restart_channels:
+        start_channel: not_applicable
+        restart_count_channel: not_applicable
+        comparability: exact
+        primary_kind: recreated
+        kinds: [recreated]
+  - id: delta_endpoint_shapes
+    input_variants:
+      added:
+        before: null
+        after: *base_container
+      removed:
+        before: *base_container
+        after: null
+      unchanged:
+        before: *base_container
+        after: *base_container
+    oracle:
+      added:
+        before: null
+        after_equals_input: true
+      removed:
+        before_equals_input: true
+        after: null
+      unchanged:
+        before_equals_input: true
+        after_equals_input: true
+      endpoint_values_presentation_truncated: false
+
+  - id: same_container_restarted_by_start_time
+    before: *base_container
+    after:
+      name: fixture-api
+      container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+      full_image_reference: registry.example.com/fixture/api:v1
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      runtime_state: running
+      created_at: "2026-01-01T09:00:00Z"
+      started_at: "2026-02-03T10:00:30Z"
+      finished_at: null
+      restart_count: 0
+    oracle:
+      comparability: exact
+      primary_kind: restarted
+      kinds: [restarted]
+
+  - id: same_container_restarted_by_restart_count
+    before:
+      name: fixture-api
+      container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+      full_image_reference: registry.example.com/fixture/api:v1
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      runtime_state: running
+      created_at: "2026-01-01T09:00:00Z"
+      started_at: null
+      finished_at: null
+      restart_count: 0
+    after:
+      name: fixture-api
+      container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+      full_image_reference: registry.example.com/fixture/api:v1
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      runtime_state: running
+      created_at: "2026-01-01T09:00:00Z"
+      started_at: null
+      finished_at: null
+      restart_count: 1
+    unavailable_optional_evidence:
+      before: [fixture-api.started_at]
+      after: [fixture-api.started_at]
+    oracle:
+      comparability: exact
+      primary_kind: restarted
+      kinds: [restarted]
+
+  - id: active_state_changed_paused_to_running
+    before:
+      name: fixture-api
+      container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+      full_image_reference: registry.example.com/fixture/api:v1
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      runtime_state: paused
+      created_at: "2026-01-01T09:00:00Z"
+      started_at: "2026-01-01T09:00:10Z"
+      finished_at: null
+      restart_count: 0
+    after:
+      name: fixture-api
+      container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+      full_image_reference: registry.example.com/fixture/api:v1
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      runtime_state: running
+      created_at: "2026-01-01T09:00:00Z"
+      started_at: "2026-01-01T09:00:10Z"
+      finished_at: null
+      restart_count: 0
+    oracle:
+      comparability: exact
+      primary_kind: state_changed
+      kinds: [state_changed]
+
+  - id: same_container_reference_only_image_change
+    before: *base_container
+    after:
+      name: fixture-api
+      container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+      full_image_reference: registry-two.example.com/other/api:v1
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      runtime_state: running
+      created_at: "2026-01-01T09:00:00Z"
+      started_at: "2026-01-01T09:00:10Z"
+      finished_at: null
+      restart_count: 0
+    oracle:
+      comparability: exact
+      primary_kind: image_changed
+      kinds: [image_changed]
+      image_reference_changed: true
+      image_content_changed: false
+      recreated: false
+      repository_basename_before: api
+      repository_basename_after: api
+      explicit_tag_before: v1
+      explicit_tag_after: v1
+      initial_compact_display_labels_equal: true
+
+  - id: same_container_same_tag_new_image_id
+    before: *base_container
+    after:
+      name: fixture-api
+      container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+      full_image_reference: registry.example.com/fixture/api:v1
+      image_id: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      runtime_state: running
+      created_at: "2026-01-01T09:00:00Z"
+      started_at: "2026-01-01T09:00:10Z"
+      finished_at: null
+      restart_count: 0
+    oracle:
+      comparability: exact
+      primary_kind: image_changed
+      kinds: [image_changed]
+      image_reference_changed: false
+      image_content_changed: true
+      recreated: false
+
+  - id: inactive_state_changed_created_to_stopped
+    before:
+      name: fixture-api
+      container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+      full_image_reference: registry.example.com/fixture/api:v1
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      runtime_state: created
+      created_at: "2026-01-01T09:00:00Z"
+      started_at: null
+      finished_at: null
+      restart_count: 0
+    after:
+      name: fixture-api
+      container_id: "00000000000000000000000000000000000000000000000000000000000000d2"
+      full_image_reference: registry.example.com/fixture/api:v1
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      runtime_state: stopped
+      created_at: "2026-01-01T09:00:00Z"
+      started_at: "2026-01-01T09:00:10Z"
+      finished_at: "2026-02-03T10:00:00Z"
+      restart_count: 0
+    oracle:
+      comparability: exact
+      primary_kind: state_changed
+      kinds: [state_changed]

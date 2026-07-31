@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Exercise a real concurrent revision conflict
+  hosts: callback_failure_conflict
+  gather_facts: false
+  strategy: linear
+  environment:
+    DAS_CALLBACK_FAILURE_BARRIER: >-
+      {{ lookup('env', 'DAS_CALLBACK_FAILURE_ROOT') }}/revision-barrier
+    DAS_CALLBACK_FAILURE_MODE: barrier-empty
+    DAS_CALLBACK_FAILURE_PARTICIPANT: "{{ inventory_hostname }}"
+    PATH: >-
+      {{ lookup('env', 'DAS_CALLBACK_FAILURE_BIN') }}:{{ lookup('env', 'PATH') }}
+  tasks:
+    - name: DAS callback failure contract | Race two prepared revisions
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: pre
+        docker_ansible_summary_instance_id: callback-conflict
+        docker_ansible_summary_scope:
+          - das-*
+        docker_ansible_summary_record_id: >-
+          callback-{{ inventory_hostname }}
+        docker_ansible_summary_state_root: >-
+          {{ lookup('env', 'DAS_CALLBACK_FAILURE_ROOT') }}/conflict-state
+        docker_ansible_summary_report_mode: none

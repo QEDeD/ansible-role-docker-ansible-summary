@@ -1,0 +1,149 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+scenario:
+  id: 22
+  title: Valid, missing, partial, and malformed legacy cutover assessment input
+
+observations:
+  a: null
+  b: null
+  c: null
+
+prior_state:
+  exists: false
+  revision: 0
+  instance_id: mdad-fixture
+  latest_complete_post: null
+  journal: []
+
+adapter_context:
+  component_boundary:
+    source_reader_and_backup_owner: mdad_cutover_tooling
+    provenance_report_owner: mdad_cutover_tooling
+    das_store_writer: none
+  source_policy: null
+  reset_policy: null
+  selected_fixture: ../legacy/valid.yml
+  fixture_matrix:
+    required:
+      - ../legacy/valid.yml
+      - ../legacy/missing.yml
+      - ../legacy/partial.yml
+      - ../legacy/malformed.yml
+    conflict_companion: ../legacy/conflict.yml
+
+invocation:
+  operation: mdad_legacy_assess
+  instance_id: mdad-fixture
+  check_mode: false
+  source_policy: null
+  reset_policy: null
+
+oracle:
+  between_observation_delta: null
+  run_window_delta: null
+  baseline:
+    advanced: false
+    before: null
+    after: null
+  das:
+    invoked: false
+    store_access_attempted: false
+    legacy_values_imported: false
+  journal:
+    status: null
+  persistence:
+    component: mdad_cutover_report
+    outcome: committed
+  das_persistence:
+    outcome: not_attempted
+  variant_results:
+    valid:
+      adapter_validation_result: valid
+      backups_required: [display_state, history, simple_versions]
+      backups_completed: [display_state, history, simple_versions]
+      cutover_report_backup_results:
+        display_state: completed
+        history: completed
+        simple_versions: completed
+      cutover_report_outcome: written
+      fresh_native_start_allowed: true
+      cutover_blocked: false
+      das_invoked: false
+      latest_complete_post_after: null
+      journal_status: null
+      das_persistence_outcome: not_attempted
+    missing:
+      adapter_validation_result: no_legacy_state
+      backups_required: []
+      backups_completed: []
+      cutover_report_backup_results: {}
+      cutover_report_outcome: written
+      fresh_native_start_allowed: true
+      cutover_blocked: false
+      das_invoked: false
+      latest_complete_post_after: null
+      journal_status: null
+      das_persistence_outcome: not_attempted
+    partial:
+      adapter_validation_result: valid_partial_source_set
+      backups_required: [history, simple_versions]
+      backups_completed: [history, simple_versions]
+      cutover_report_backup_results:
+        history: completed
+        simple_versions: completed
+      cutover_report_outcome: written
+      fresh_native_start_allowed: true
+      cutover_blocked: false
+      das_invoked: false
+      latest_complete_post_after: null
+      journal_status: null
+      das_persistence_outcome: not_attempted
+    malformed:
+      adapter_validation_result: malformed_input
+      backups_required: [display_state]
+      backups_completed: [display_state]
+      cutover_report_backup_results:
+        display_state: completed
+      cutover_report_outcome: written
+      fresh_native_start_allowed: false
+      cutover_blocked: true
+      das_invoked: false
+      latest_complete_post_after: null
+      journal_status: null
+      das_persistence_outcome: not_attempted
+      source_files_unchanged: true
+    valid_source_conflict:
+      adapter_validation_result: valid_source_conflict
+      backups_required: [display_state, history]
+      backups_completed: [display_state, history]
+      cutover_report_backup_results:
+        display_state: completed
+        history: completed
+      cutover_report_outcome: written
+      fresh_native_start_allowed: false
+      cutover_blocked: true
+      das_invoked: false
+      latest_complete_post_after: null
+      journal_status: null
+      das_persistence_outcome: not_attempted
+      source_files_unchanged: true
+  human:
+    minimum_messages:
+      - "Legacy evidence assessed"
+      - "DAS starts from native evidence"
+      - "No legacy values imported"
+  machine_result:
+    schema_version: 1
+    operation: mdad_legacy_assess
+    instance_id: mdad-fixture
+    adapter_validation_result: valid
+    cutover_report_outcome: written
+    fresh_native_start_allowed: true
+    cutover_blocked: false
+    das_invoked: false
+    das_persistence_outcome: not_attempted
+    latest_complete_post_after: null
+    journal_status: null

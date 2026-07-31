@@ -1,0 +1,62 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+legacy_fixture_schema_version: 1
+variant: malformed
+description: An existing source cannot be parsed and must remain untouched.
+
+sources:
+  display_state:
+    exists: true
+    parse_status: malformed
+    synthetic_sha256: "6666666666666666666666666666666666666666666666666666666666666666"
+    synthetic_payload: "{this is intentionally invalid legacy JSON"
+  history:
+    exists: false
+  simple_versions:
+    exists: false
+
+prior_state:
+  latest_complete_post: null
+  revision: 0
+  canonical_bytes_sha256: null
+
+adapter_invocation:
+  instance_id: mdad-fixture
+  source_policy: null
+  reset_policy: null
+
+oracle:
+  validation:
+    result: malformed_input
+    malformed_sources: [display_state]
+  das_invoked: false
+  backups:
+    required: [display_state]
+    completed: [display_state]
+    raw_payloads_preserved: true
+  cutover_report:
+    outcome: written
+    evidence_status: malformed_input
+    evidence_sources: [display_state]
+    source_hashes:
+      display_state: "6666666666666666666666666666666666666666666666666666666666666666"
+    backup_results:
+      display_state: completed
+    raw_legacy_values_in_report: false
+  fresh_native_start_allowed: false
+  cutover_blocked: true
+  legacy_values_imported_into_das: false
+  latest_complete_post:
+    before: null
+    after: null
+  source_files_unchanged:
+    display_state:
+      synthetic_sha256: "6666666666666666666666666666666666666666666666666666666666666666"
+  journal_status: null
+  das_persistence_outcome: not_attempted
+  minimum_messages:
+    - "Malformed legacy source: display_state"
+    - "Source backed up; DAS unchanged"
+    - "Select reset only after preserving the source"

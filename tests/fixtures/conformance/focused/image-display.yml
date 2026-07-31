@@ -1,0 +1,499 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+fixture_family: focused_cases
+topic: image_display
+description: >-
+  Pure, versioned image-reference-to-table-label projection. These cases never
+  decide image equality and never replace full canonical machine evidence.
+
+presentation_schema_version: 1
+
+cases:
+  - id: registry_port_with_explicit_tag
+    input:
+      full_image_reference: registry.example.com:5443/team/api:v1.2.3
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    oracle:
+      kind: tagged_reference
+      repository: registry.example.com:5443/team/api
+      repository_basename: api
+      tag: v1.2.3
+      digest: null
+      compact_label: api:v1.2.3
+      invented_latest: false
+      comparison_input_used: false
+
+  - id: registry_port_without_explicit_tag
+    input:
+      full_image_reference: registry.example.com:5443/team/api
+      image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    oracle:
+      kind: untagged_reference
+      repository: registry.example.com:5443/team/api
+      repository_basename: api
+      tag: null
+      digest: null
+      compact_label: "api <no explicit tag>"
+      invented_latest: false
+      comparison_input_used: false
+
+  - id: digest_reference
+    input:
+      full_image_reference: "registry.example.com/team/worker@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      image_id: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    oracle:
+      kind: digest_reference
+      repository: registry.example.com/team/worker
+      repository_basename: worker
+      tag: null
+      digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      digest_prefix_length: 12
+      compact_label: "worker@sha256:aaaaaaaaaaaa"
+      invented_latest: false
+      comparison_input_used: false
+
+  - id: tag_plus_digest_reference
+    input:
+      full_image_reference: "registry.example.com:5443/team/api:v2@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      image_id: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    oracle:
+      kind: tagged_digest_reference
+      repository: registry.example.com:5443/team/api
+      repository_basename: api
+      tag: v2
+      digest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      digest_prefix_length: 12
+      compact_label: "api:v2@sha256:bbbbbbbbbbbb"
+      invented_latest: false
+      comparison_input_used: false
+
+  - id: bare_image_id_reference
+    input:
+      full_image_reference: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      image_id: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    oracle:
+      kind: bare_image_id
+      repository: null
+      repository_basename: null
+      tag: null
+      digest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      digest_prefix_length: 12
+      compact_label: "sha256:cccccccccccc"
+      invented_latest: false
+      comparison_input_used: false
+
+  - id: reference_grammar_boundaries_are_exact
+    input:
+      accepted:
+        unqualified_tag: ubuntu:latest
+        lowercase_path: team/component_api
+        localhost_max_port: localhost:65535/team/api:Release_2026.07-30
+      rejected:
+        zero_port: localhost:0/team/api:v1
+        leading_zero_port: localhost:05000/team/api:v1
+        overflowing_port: localhost:65536/team/api:v1
+        ipv6_authority: "[::1]:5000/team/api:v1"
+        empty_path_component: registry.example.com//api:v1
+        consecutive_path_separator: registry.example.com/team--one/api:v1
+        multiple_digest_separators: "registry.example.com/team/api:v1@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    oracle:
+      accepted_kinds:
+        unqualified_tag: tagged_reference
+        lowercase_path: untagged_reference
+        localhost_max_port: tagged_reference
+      rejected_kind: opaque_reference
+      accepted_count: 3
+      rejected_count: 7
+      comparison_input_used: false
+
+  - id: opaque_tags_are_preserved_not_ordered
+    input:
+      references:
+        - registry.example.com/team/api:latest
+        - registry.example.com/team/api:v2.0.0-rc.1
+        - registry.example.com/team/api:2026-07-30
+        - registry.example.com/team/api:feature_branch-7
+    oracle:
+      tags:
+        - latest
+        - v2.0.0-rc.1
+        - "2026-07-30"
+        - feature_branch-7
+      tags_preserved_verbatim: true
+      semantic_ordering_attempted: false
+      upgrade_or_downgrade_inferred: false
+      latest_freshness_inferred: false
+      comparison_input_used: false
+
+  - id: repository_collision_expands_context
+    input:
+      before:
+        full_image_reference: registry-one.example.com/team/api:v1
+        image_id: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      after:
+        full_image_reference: registry-two.example.com/other/api:v1
+        image_id: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+    oracle:
+      initial_before_label: api:v1
+      initial_after_label: api:v1
+      disambiguation_reason: repository_context
+      final_before_label: registry-one.example.com/team/api:v1
+      final_after_label: registry-two.example.com/other/api:v1
+      final_labels_equal: false
+      machine_references_unchanged: true
+      comparison_input_used: false
+
+  - id: mutable_tag_adds_image_id_evidence
+    input:
+      before:
+        full_image_reference: registry.example.com/team/api:v1
+        image_id: "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      after:
+        full_image_reference: registry.example.com/team/api:v1
+        image_id: "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+    oracle:
+      initial_before_label: api:v1
+      initial_after_label: api:v1
+      disambiguation_reason: image_id_changed_under_equal_reference
+      image_id_prefix_length: 7
+      image_id_separator: "@"
+      final_before_label: api:v1@5555555
+      final_after_label: api:v1@6666666
+      final_labels_equal: false
+      expected_change_kind: image_changed
+      comparison_input_used: false
+
+  - id: long_colliding_references_preserve_suffix_and_identity
+    input:
+      max_cell_width: 32
+      before:
+        full_image_reference: registry.example.com/fictional/very-long-team-one/component-api:release-2026-07-30
+        image_id: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      after:
+        full_image_reference: registry.example.com/fictional/very-long-team-two/component-api:release-2026-07-30
+        image_id: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+    oracle:
+      identifier_aware_shortening: true
+      shortened_collision_label: component-api:release-2026-07-30
+      tag_suffix_preserved: release-2026-07-30
+      stable_disambiguator_present: true
+      hash_prefix_length: 4
+      final_before_label: "compone~:release-2026-07-30#ad96"
+      final_after_label: "compone~:release-2026-07-30#0b51"
+      final_labels_equal: false
+      each_label_width_max: 32
+      machine_references_truncated: false
+      comparison_input_used: false
+
+  - id: colliding_short_id_prefix_extends_until_unique
+    input:
+      before_image_id: "sha256:123456789abc0111111111111111111111111111111111111111111111111111"
+      after_image_id: "sha256:123456789abc1222222222222222222222222222222222222222222222222222"
+      initial_prefix_length: 7
+    oracle:
+      base_label: api:v1
+      selected_prefix_length: 13
+      before_prefix: 123456789abc0
+      after_prefix: 123456789abc1
+      final_before_label: api:v1@123456789abc0
+      final_after_label: api:v1@123456789abc1
+      prefixes_equal: false
+      full_value_fallback_allowed: true
+      comparison_input_used: false
+
+  - id: report_wide_repository_collisions_are_globally_unique
+    input:
+      report_cells:
+        - cell_key: fixture-api-a.before
+          full_image_reference: r1.example/team/api:v1
+          image_id: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+        - cell_key: fixture-api-a.after
+          full_image_reference: r2.example/team/api:v1
+          image_id: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+        - cell_key: fixture-api-b.before
+          full_image_reference: r3.example/other/api:v1
+          image_id: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+        - cell_key: fixture-api-b.after
+          full_image_reference: r4.example/other/api:v1
+          image_id: "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      permuted_cell_order:
+        - fixture-api-b.after
+        - fixture-api-a.before
+        - fixture-api-b.before
+        - fixture-api-a.after
+    oracle:
+      collision_scope: whole_report
+      global_collision_group_size: 4
+      initial_labels_by_cell:
+        fixture-api-a.before: api:v1
+        fixture-api-a.after: api:v1
+        fixture-api-b.before: api:v1
+        fixture-api-b.after: api:v1
+      exact_final_labels_by_cell:
+        fixture-api-a.before: r1.example/team/api:v1
+        fixture-api-a.after: r2.example/team/api:v1
+        fixture-api-b.before: r3.example/other/api:v1
+        fixture-api-b.after: r4.example/other/api:v1
+      distinct_machine_reference_count: 4
+      distinct_final_label_count: 4
+      label_assignment_unchanged_under_input_permutation: true
+      comparison_input_used: false
+      invented_latest: false
+
+  - id: readable_collision_fallback_uses_hash_suffix
+    input:
+      max_cell_width: 15
+      report_cells:
+        - cell_key: fixture-synapse-a.before
+          full_image_reference: registry.example.com/mirror/element-hq/synapse:v1.157.2
+          image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        - cell_key: fixture-synapse-a.after
+          full_image_reference: registry.example.net/mirror/element-hq/synapse:v1.157.2
+          image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        - cell_key: fixture-synapse-b.before
+          full_image_reference: registry.example.org/mirror/element-hq/synapse:v1.157.2
+          image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        - cell_key: fixture-synapse-b.after
+          full_image_reference: registry.example.edu/mirror/element-hq/synapse:v1.157.2
+          image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      permuted_cell_order:
+        - fixture-synapse-b.after
+        - fixture-synapse-a.before
+        - fixture-synapse-b.before
+        - fixture-synapse-a.after
+    oracle:
+      fallback_reason: readable_compaction_collision
+      exact_cell_labels:
+        fixture-synapse-a.before: "syn~.157.2#71a7"
+        fixture-synapse-a.after: "syn~.157.2#4d81"
+        fixture-synapse-b.before: "syn~.157.2#c359"
+        fixture-synapse-b.after: "syn~.157.2#da3d"
+      readable_prefix: "syn~.157.2"
+      elision_marker: "~"
+      disambiguation_separator: "#"
+      hash_algorithm: sha256
+      hash_input: "full_image_reference NUL image_id"
+      minimum_hash_prefix_length: 4
+      labels_stable_under_input_permutation: true
+      endpoint_labels_visibly_distinct: true
+      opaque_ordinal_markers_used: false
+      legend_entries: []
+      hidden_mappings: 0
+      machine_references_truncated: false
+      comparison_input_used: false
+      invented_latest: false
+
+  - id: colliding_digest_prefix_extends_until_unique
+    input:
+      before:
+        full_image_reference: "registry.example.com/team/api@sha256:123456789abc0111111111111111111111111111111111111111111111111111"
+        image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      after:
+        full_image_reference: "registry.example.com/team/api@sha256:123456789abc1222222222222222222222222222222222222222222222222222"
+        image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      initial_prefix_length: 12
+    oracle:
+      selected_prefix_length: 13
+      before_prefix: 123456789abc0
+      after_prefix: 123456789abc1
+      final_before_label: "api@sha256:123456789abc0"
+      final_after_label: "api@sha256:123456789abc1"
+      prefixes_equal: false
+      comparison_input_used: false
+
+  - id: hash_prefix_extends_past_four_until_unique
+    input:
+      max_cell_width: 16
+      before:
+        full_image_reference: registry.example.com/team-217/component-api:v1
+        image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      after:
+        full_image_reference: registry.example.com/team-481/component-api:v1
+        image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    oracle:
+      minimum_hash_prefix_length: 4
+      selected_hash_prefix_length: 5
+      final_before_label: "compon~:v1#244b8"
+      final_after_label: "compon~:v1#244b3"
+      labels_equal: false
+      each_label_width: 16
+      comparison_input_used: false
+
+  - id: presentation_capacity_failure_is_bounded
+    input:
+      max_cell_width: 5
+      identities:
+        - full_image_reference: registry-one.example.com/team/api:v1
+          image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        - full_image_reference: registry-two.example.com/team/api:v1
+          image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    oracle:
+      minimum_readable_characters: 1
+      separator: "#"
+      minimum_hash_prefix_length: 4
+      minimum_representable_width: 6
+      failure_reason: presentation_capacity_exceeded
+      full_table_rendered: false
+      compact_failure_envelope_present: true
+      machine_references_truncated: false
+      comparison_input_used: false
+
+  - id: missing_reference_never_uses_identifier_fallback
+    input:
+      canonical_observation:
+        status: partial
+        metadata_gaps: [fixture-api.full_image_reference]
+        reason_code: required_field_missing
+        warnings:
+          - "Required container evidence is missing; inspect metadata_gaps"
+      full_image_reference: null
+      image_id: "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+      container_id: "9999999999999999999999999999999999999999999999999999999999999999"
+    oracle:
+      kind: missing_reference
+      compact_label: "<unknown>"
+      observation_status: partial
+      metadata_gap: full_image_reference
+      metadata_gaps: [fixture-api.full_image_reference]
+      reason_code: required_field_missing
+      observation_status_changed_by_projection: false
+      metadata_gaps_changed_by_projection: false
+      reason_code_changed_by_projection: false
+      image_id_substituted_as_reference: false
+      container_id_substituted_as_reference: false
+      invented_latest: false
+      comparison_input_used: false
+
+  - id: opaque_long_reference_escapes_then_shortens_atoms
+    input:
+      max_cell_width: 47
+      full_image_reference: 'registry..example.com/team/very~long|component:release#2026'
+      image_id: "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+    oracle:
+      kind: opaque_reference
+      escaped_reference: 'registry..example.com/team/very\x7elong\x7ccomponent:release\x232026'
+      semantic_label: 'o:registry..example.com/team/very\x7elong\x7ccomponent:release\x232026'
+      final_label: 'o:registry..example~component:release\x232026'
+      final_label_width: 45
+      escape_before_shortening: true
+      escape_atoms_split: false
+      unused_atom_budget_reallocated: false
+      presentation_warning: null
+      comparison_input_used: false
+
+  - id: opaque_width_collision_uses_identity_hash
+    input:
+      max_cell_width: 32
+      before:
+        full_image_reference: registry..example.com/team/aaaaaaaa-X-zzzzzzzzzzzzzzzzzzzzzzzzzzzz-common:v1
+        image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      after:
+        full_image_reference: registry..example.com/team/aaaaaaaa-Y-zzzzzzzzzzzzzzzzzzzzzzzzzzzz-common:v1
+        image_id: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    oracle:
+      kind: opaque_reference
+      pre_hash_before_label: 'o:registry..e~zzzzzzzz-common:v1'
+      pre_hash_after_label: 'o:registry..e~zzzzzzzz-common:v1'
+      hash_prefix_length: 4
+      final_before_label: 'o:registry.~zzzzz-common:v1#33fa'
+      final_after_label: 'o:registry.~zzzzz-common:v1#7f95'
+      final_labels_equal: false
+      readable_content_preserved: true
+      presentation_warning: null
+      comparison_input_used: false
+
+  - id: opaque_equal_reference_adds_image_id_evidence
+    input:
+      max_cell_width: 64
+      before:
+        full_image_reference: registry..example.com/team/api:v1
+        image_id: "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      after:
+        full_image_reference: registry..example.com/team/api:v1
+        image_id: "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+    oracle:
+      kind: opaque_reference
+      image_id_prefix_length: 7
+      final_before_label: 'o:registry..example.com/team/api:v1@3333333'
+      final_after_label: 'o:registry..example.com/team/api:v1@4444444'
+      final_labels_equal: false
+      expected_change_kind: image_changed
+      presentation_warning: null
+      comparison_input_used: false
+
+  - id: opaque_minimum_and_default_run_window_budgets
+    input:
+      full_image_reference: registry..example.com/team/api:v1
+      image_id: "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      runtime_state_reservation: 13
+      report_widths: [100, 120]
+    oracle:
+      kind: opaque_reference
+      endpoint_content_widths:
+        100: 22
+        120: 28
+      image_label_budgets:
+        100: 9
+        120: 15
+      exact_labels:
+        100: 'o:re~i:v1'
+        120: 'o:regi~m/api:v1'
+      opaque_marker: 'o:'
+      marker_visible_at_every_budget: true
+      presentation_warning: null
+      comparison_input_used: false
+
+  - id: unsupported_digest_algorithm_is_opaque
+    input:
+      canonical_observation_status: complete
+      full_image_reference: "registry.example.com/team/api:v1@sha512:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      image_id: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    oracle:
+      kind: opaque_reference
+      preserved_reference: "registry.example.com/team/api:v1@sha512:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      presentation_warning: null
+      observation_status: complete
+      observation_status_changed_by_projection: false
+      digest_semantics_inferred: false
+      invented_latest: false
+      comparison_input_used: false
+
+  - id: unsupported_authority_is_opaque
+    input:
+      full_image_reference: registry..example.com/team/api:v1
+      image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    oracle:
+      kind: opaque_reference
+      preserved_reference: registry..example.com/team/api:v1
+      presentation_warning: null
+      authority_defect: empty_dns_label
+      observation_status_changed_by_projection: false
+      invented_latest: false
+      comparison_input_used: false
+
+  - id: unsupported_repository_component_is_opaque
+    input:
+      full_image_reference: registry.example.com/Team/api:v1
+      image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    oracle:
+      kind: opaque_reference
+      preserved_reference: registry.example.com/Team/api:v1
+      presentation_warning: null
+      repository_defect: uppercase_component
+      observation_status_changed_by_projection: false
+      invented_latest: false
+      comparison_input_used: false
+
+  - id: unsupported_reference_is_opaque_not_guessed
+    input:
+      full_image_reference: registry.example.com/team/api:tag:unexpected
+      image_id: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    oracle:
+      kind: opaque_reference
+      preserved_reference: registry.example.com/team/api:tag:unexpected
+      presentation_warning: null
+      observation_status_changed_by_projection: false
+      invented_latest: false
+      comparison_input_used: false

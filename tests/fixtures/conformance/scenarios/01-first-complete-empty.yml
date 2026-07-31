@@ -1,0 +1,89 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+scenario:
+  id: 1
+  title: First complete empty observation
+
+observations:
+  a: null
+  b:
+    observation_id: obs-01-b
+    observed_at: "2026-01-01T10:00:00Z"
+    status: complete
+    scope: &scope
+      patterns: ["fixture-*"]
+      identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+      comparison_schema_version: 1
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+  c:
+    observation_id: obs-01-c
+    observed_at: "2026-01-01T10:01:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+
+prior_state:
+  exists: true
+  revision: 1
+  instance_id: mdad-fixture
+  latest_complete_post: null
+  journal:
+    - record_id: record-01
+      status: open
+      pre_observation: b
+      expected_post_revision: 1
+
+invocation:
+  operation: post
+  instance_id: mdad-fixture
+  scope: ["fixture-*"]
+  record_id: record-01
+  check_mode: false
+  b: b
+  c: c
+
+oracle:
+  between_observation_delta:
+    comparability: no_baseline
+    comparison_schema_version: 1
+    from_observation_id: null
+    to_observation_id: obs-01-b
+    changes: []
+    warnings: []
+  run_window_delta:
+    comparability: exact
+    comparison_schema_version: 1
+    from_observation_id: obs-01-b
+    to_observation_id: obs-01-c
+    changes: []
+    warnings: []
+  baseline:
+    advanced: true
+    before: null
+    after: obs-01-c
+  journal:
+    status: complete
+  persistence:
+    outcome: committed
+  human:
+    minimum_messages:
+      - "No previous complete observation"
+      - "Complete empty observation"
+      - "No observed run-window difference"
+  machine_result:
+    schema_version: 1
+    operation: post
+    instance_id: mdad-fixture
+    record_id: record-01
+    observation_status: complete
+    observation: c
+    scope_identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+    baseline_advanced: true
+    journal_status: complete
+    persistence_outcome: committed

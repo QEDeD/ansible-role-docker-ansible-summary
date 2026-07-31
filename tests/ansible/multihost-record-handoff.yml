@@ -1,0 +1,174 @@
+# SPDX-FileCopyrightText: 2026 QEDeD
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Prove concurrent per-host pre-to-post record handoff
+  hosts: handoff_targets
+  gather_facts: false
+  strategy: linear
+  any_errors_fatal: true
+  environment:
+    DAS_FAKE_DOCKER_CONTAINER_NAME: "das-{{ inventory_hostname }}-fixture"
+    DAS_FAKE_DOCKER_LOG: >-
+      {{ lookup('env', 'DAS_HANDOFF_ROOT') }}/logs/{{ inventory_hostname }}.jsonl
+    PATH: >-
+      {{ lookup('env', 'DAS_HANDOFF_BIN') }}:{{ lookup('env', 'PATH') }}
+  vars:
+    das_handoff_instance_id: "handoff-{{ inventory_hostname }}"
+    das_handoff_state_root: >-
+      {{ lookup('env', 'DAS_HANDOFF_ROOT') }}/state-{{ inventory_hostname }}
+    das_handoff_container_name: "das-{{ inventory_hostname }}-fixture"
+  tasks:
+    - name: DAS handoff contract | Capture the pre observation
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: pre
+        docker_ansible_summary_instance_id: "{{ das_handoff_instance_id }}"
+        docker_ansible_summary_scope:
+          - das-*
+        docker_ansible_summary_state_root: "{{ das_handoff_state_root }}"
+        docker_ansible_summary_report_mode: none
+
+    - name: DAS handoff contract | Preserve the generated pre identity
+      ansible.builtin.set_fact:
+        das_handoff_pre_result: "{{ docker_ansible_summary_result }}"
+        das_handoff_pre_record_id: >-
+          {{ docker_ansible_summary_result.record_id }}
+
+    - name: DAS handoff contract | Validate the generated pre identity
+      ansible.builtin.assert:
+        that:
+          - das_handoff_pre_result.operation == "pre"
+          - das_handoff_pre_result.instance_id == das_handoff_instance_id
+          - das_handoff_pre_result.record_id == das_handoff_pre_record_id
+          - das_handoff_pre_record_id is match("^das-[0-9a-f]{32}$")
+          - das_handoff_pre_result.persistence_outcome == "committed"
+          - das_handoff_pre_result.journal_status == "open"
+          - das_handoff_pre_result.observation_status == "complete"
+          - >-
+            das_handoff_pre_result.observation.containers.keys() | list
+            == [das_handoff_container_name]
+
+    - name: DAS handoff contract | Capture post with the matching pre identity
+      ansible.builtin.import_role:
+        name: docker_ansible_summary
+        tasks_from: observe
+        allow_duplicates: true
+      vars:
+        docker_ansible_summary_operation: post
+        docker_ansible_summary_instance_id: "{{ das_handoff_instance_id }}"
+        docker_ansible_summary_scope:
+          - das-*
+        docker_ansible_summary_record_id: "{{ das_handoff_pre_record_id }}"
+        docker_ansible_summary_state_root: "{{ das_handoff_state_root }}"
+        docker_ansible_summary_report_mode: none
+
+    - name: DAS handoff contract | Preserve the post result
+      ansible.builtin.set_fact:
+        das_handoff_post_result: "{{ docker_ansible_summary_result }}"
+
+    - name: DAS handoff contract | Read the per-host durable state
+      ansible.builtin.slurp:
+        src: >-
+          {{ das_handoff_state_root }}/{{ das_handoff_instance_id }}/state.json
+      register: das_handoff_state_file
+
+    - name: DAS handoff contract | Read the per-host Docker process evidence
+      ansible.builtin.slurp:
+        src: >-
+          {{ lookup('env', 'DAS_HANDOFF_ROOT') }}/logs/{{ inventory_hostname }}.jsonl
+      register: das_handoff_docker_log
+
+    - name: DAS handoff contract | Decode per-host evidence
+      ansible.builtin.set_fact:
+        das_handoff_role_results:
+          - "{{ das_handoff_pre_result }}"
+          - "{{ das_handoff_post_result }}"
+        das_handoff_store: >-
+          {{ das_handoff_state_file.content | b64decode | from_json }}
+        das_handoff_process_calls: >-
+          {{
+            (das_handoff_docker_log.content | b64decode).splitlines()
+            | map("from_json")
+            | list
+          }}
+
+    - name: DAS handoff contract | Validate exact per-host execution and state
+      ansible.builtin.assert:
+        that:
+          # Each static import expands to the role's sole action/module task.
+          - das_handoff_role_results | length == 2
+          - >-
+            das_handoff_role_results | map(attribute="operation") | list
+            == ["pre", "post"]
+          - das_handoff_post_result.operation == "post"
+          - das_handoff_post_result.instance_id == das_handoff_instance_id
+          - das_handoff_post_result.record_id == das_handoff_pre_record_id
+          - das_handoff_post_result.persistence_outcome == "committed"
+          - das_handoff_post_result.journal_status == "complete"
+          - das_handoff_post_result.observation_status == "complete"
+          - >-
+            das_handoff_post_result.observation.containers.keys() | list
+            == [das_handoff_container_name]
+          - das_handoff_post_result.run_window_delta.comparability == "exact"
+          - das_handoff_store.instance_id == das_handoff_instance_id
+          - das_handoff_store.revision == 2
+          - das_handoff_store.journal | length == 1
+          - >-
+            das_handoff_store.journal[0].record_id
+            == das_handoff_pre_record_id
+          - das_handoff_store.journal[0].status == "complete"
+          - >-
+            das_handoff_store.journal[0].pre.containers.keys() | list
+            == [das_handoff_container_name]
+          - >-
+            das_handoff_store.journal[0].post.containers.keys() | list
+            == [das_handoff_container_name]
+          # Two discovery processes per observation, twice per host.
+          - das_handoff_process_calls | length == 4
+          - das_handoff_process_calls[0][0:2] == ["container", "ls"]
+          - das_handoff_process_calls[1][0:2] == ["container", "inspect"]
+          - das_handoff_process_calls[2][0:2] == ["container", "ls"]
+          - das_handoff_process_calls[3][0:2] == ["container", "inspect"]
+
+    - name: DAS handoff contract | Validate cross-host isolation
+      ansible.builtin.assert:
+        that:
+          - >-
+            hostvars["alpha"].das_handoff_pre_record_id
+            != hostvars["bravo"].das_handoff_pre_record_id
+          - >-
+            hostvars["alpha"].das_handoff_post_result.record_id
+            == hostvars["alpha"].das_handoff_pre_record_id
+          - >-
+            hostvars["bravo"].das_handoff_post_result.record_id
+            == hostvars["bravo"].das_handoff_pre_record_id
+          - >-
+            hostvars["bravo"].das_handoff_pre_record_id
+            not in (
+              hostvars["alpha"].das_handoff_store
+              | to_json
+            )
+          - >-
+            hostvars["alpha"].das_handoff_pre_record_id
+            not in (
+              hostvars["bravo"].das_handoff_store
+              | to_json
+            )
+          - >-
+            "das-bravo-fixture"
+            not in (
+              hostvars["alpha"].das_handoff_store
+              | to_json
+            )
+          - >-
+            "das-alpha-fixture"
+            not in (
+              hostvars["bravo"].das_handoff_store
+              | to_json
+            )
+      run_once: true

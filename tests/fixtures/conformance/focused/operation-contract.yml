@@ -1,0 +1,768 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+fixture_family: focused_cases
+topic: operation_contract
+description: >-
+  Focused cases for operation paths that are not standalone members of the
+  fixed 22-scenario lifecycle matrix.
+
+shared:
+  scope: &scope
+    patterns: ["fixture-*"]
+    identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+    comparison_schema_version: 1
+  incompatible_a: &incompatible_a
+    observation_id: obs-focused-incompatible-a
+    observed_at: "2026-02-01T09:00:00Z"
+    status: complete
+    scope:
+      patterns: ["old-*"]
+      identity: sha256:f3f77e2e57c88fb4dac40223c06fda78e413298716b708f2879faca1fc475bbe
+      comparison_schema_version: 1
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+  complete_a: &complete_a
+    observation_id: obs-focused-a
+    observed_at: "2026-02-01T09:00:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+  complete_b: &complete_b
+    observation_id: obs-focused-b
+    observed_at: "2026-02-01T10:00:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+  complete_c: &complete_c
+    observation_id: obs-focused-c
+    observed_at: "2026-02-01T10:01:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+  unavailable_b: &unavailable_b
+    observation_id: obs-focused-unavailable-b
+    observed_at: "2026-02-02T09:59:00Z"
+    status: unavailable
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: null
+    reason_code: docker_daemon_unreachable
+    warnings: ["Docker daemon was unreachable"]
+  complete_after_unavailable: &complete_after_unavailable
+    observation_id: obs-focused-complete-after-unavailable
+    observed_at: "2026-02-02T10:01:00Z"
+    status: complete
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: {}
+  partial_b: &partial_b
+    observation_id: obs-focused-partial-b
+    observed_at: "2026-02-02T10:00:00Z"
+    status: partial
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: ["fixture-api.runtime_state"]
+    reason_code: required_field_missing
+    warnings:
+      - "Required container evidence is missing; inspect metadata_gaps"
+    containers:
+      fixture-api:
+        name: fixture-api
+        container_id: "00000000000000000000000000000000000000000000000000000000000000d1"
+        full_image_reference: registry.example.com/fixture/api:v1
+        image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        runtime_state: null
+        created_at: "2026-01-01T09:00:00Z"
+        started_at: "2026-01-01T09:00:10Z"
+        finished_at: null
+        restart_count: 0
+  unavailable_c: &unavailable_c
+    observation_id: obs-focused-unavailable-c
+    observed_at: "2026-02-02T10:01:00Z"
+    status: unavailable
+    scope: *scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers: null
+    reason_code: docker_unavailable
+    warnings: ["Docker daemon was unavailable"]
+
+cases:
+  - id: disabled_short_circuits_before_validation
+    invocation:
+      enabled: false
+      deliberately_invalid_unvalidated_inputs:
+        operation: invalid
+        instance_id: null
+        scope: []
+    oracle:
+      input_validation_attempted: false
+      discovery_attempted: false
+      prior_state_access: forbidden
+      filesystem_side_effects: []
+      caller_continues: true
+      machine_result:
+        schema_version: 1
+        operation: null
+        instance_id: null
+        record_id: null
+        correlation_id: null
+        observation: null
+        observation_status: null
+        scope_identity: null
+        between_observation_delta: null
+        run_window_delta: null
+        baseline: null
+        baseline_advanced: null
+        journal_status: null
+        persistence_outcome: not_attempted
+        replay_outcome: null
+        simulated: false
+        skipped: true
+        warnings: []
+
+  - id: absent_store_unavailable_pre_commits_open
+    prior_state:
+      exists: false
+    invocation:
+      operation: pre
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: null
+      check_mode: false
+      failure_policy: report
+      observation: *unavailable_b
+    oracle:
+      between_observation_delta:
+        comparability: incomplete
+        comparison_schema_version: 1
+        from_observation_id: null
+        to_observation_id: obs-focused-unavailable-b
+        changes: []
+        warnings: []
+      run_window_delta: null
+      generated_record_id: generated-pre-unavailable-001
+      baseline_advanced: false
+      baseline_after: null
+      journal_status: open
+      persistence_outcome: committed
+      revision_after: 1
+      expected_post_revision: 1
+      role_failed: false
+      machine_result:
+        operation: pre
+        record_id: generated-pre-unavailable-001
+        observation: obs-focused-unavailable-b
+        observation_status: unavailable
+        baseline_advanced: false
+        journal_status: open
+        persistence_outcome: committed
+
+  - id: complete_post_after_unavailable_pre_advances_baseline
+    prior_state:
+      exists: true
+      revision: 1
+      instance_id: fixture-instance
+      latest_complete_post: null
+      journal:
+        - record_id: generated-pre-unavailable-001
+          status: open
+          pre: *unavailable_b
+          expected_post_revision: 1
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: generated-pre-unavailable-001
+      check_mode: false
+      observation: *complete_after_unavailable
+    oracle:
+      between_observation_delta:
+        comparability: incomplete
+        comparison_schema_version: 1
+        from_observation_id: null
+        to_observation_id: obs-focused-unavailable-b
+        changes: []
+        warnings: []
+      run_window_delta:
+        comparability: incomplete
+        comparison_schema_version: 1
+        from_observation_id: obs-focused-unavailable-b
+        to_observation_id: obs-focused-complete-after-unavailable
+        changes: []
+        warnings: []
+      baseline_advanced: true
+      baseline_after: obs-focused-complete-after-unavailable
+      journal_status: incomplete_pre
+      persistence_outcome: committed
+      revision_after: 2
+      machine_result:
+        operation: post
+        record_id: generated-pre-unavailable-001
+        observation: obs-focused-complete-after-unavailable
+        observation_status: complete
+        baseline_advanced: true
+        journal_status: incomplete_pre
+        persistence_outcome: committed
+
+  - id: fail_after_report_commits_renders_then_fails
+    prior_state:
+      exists: true
+      revision: 11
+      instance_id: fixture-instance
+      latest_complete_post: *complete_a
+      journal: []
+    invocation:
+      operation: pre
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: caller-fail-policy-001
+      check_mode: false
+      failure_policy: fail_after_report
+      observation: *unavailable_b
+    oracle:
+      between_observation_delta:
+        comparability: incomplete
+        comparison_schema_version: 1
+        from_observation_id: obs-focused-a
+        to_observation_id: obs-focused-unavailable-b
+        changes: []
+        warnings: []
+      baseline_advanced: false
+      baseline_after: obs-focused-a
+      journal_status: open
+      persistence_outcome: committed
+      revision_after: 12
+      report_rendered_before_failure: true
+      task_failed: true
+      failure_reason: observation_noncomplete
+      observation_reason: docker_daemon_unreachable
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      committed_result_replayable_with_report_policy: true
+
+  - id: retained_noncomplete_replay_reapplies_failure_policy
+    prior_state:
+      exists: true
+      revision: 12
+      instance_id: fixture-instance
+      latest_complete_post: *complete_a
+      journal:
+        - record_id: caller-fail-policy-001
+          status: open
+          pre: *unavailable_b
+          pre_signature_matches_invocation: true
+          original_invocation_failure_policy: report
+          expected_post_revision: 12
+    invocation:
+      operation: pre
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: caller-fail-policy-001
+      check_mode: false
+      failure_policy: fail_after_report
+    oracle:
+      discovery_attempted: false
+      store_mutated: false
+      revision_after: 12
+      replay_outcome: idempotent
+      failure_policy_in_phase_signature: false
+      returned_observation: obs-focused-unavailable-b
+      journal_status: open
+      persistence_outcome: not_attempted
+      report_rendered_before_failure: true
+      task_failed: true
+      failure_reason: observation_noncomplete
+      observation_reason: docker_daemon_unreachable
+      full_machine_result_in_failed_callback: false
+      compact_failure_envelope_present: true
+      committed_result_replayable_with_report_policy: true
+
+  - id: pre_commits_open_record
+    prior_state:
+      exists: true
+      revision: 7
+      instance_id: fixture-instance
+      latest_complete_post: *complete_a
+      journal: []
+    invocation:
+      operation: pre
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: caller-pre-001
+      check_mode: false
+      observation: *complete_b
+    oracle:
+      between_observation_delta:
+        comparability: exact
+        comparison_schema_version: 1
+        from_observation_id: obs-focused-a
+        to_observation_id: obs-focused-b
+        changes: []
+        warnings: []
+      run_window_delta: null
+      baseline_advanced: false
+      journal_status: open
+      persistence_outcome: committed
+      revision_after: 8
+      expected_post_revision: 8
+      machine_result:
+        operation: pre
+        record_id: caller-pre-001
+        observation: obs-focused-b
+        observation_status: complete
+        baseline_advanced: false
+        journal_status: open
+        persistence_outcome: committed
+
+  - id: check_pre_is_independent_simulation
+    prior_state_access: forbidden
+    invocation:
+      operation: pre
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: null
+      check_mode: true
+      observation: *complete_b
+    oracle:
+      between_observation_delta: null
+      run_window_delta: null
+      baseline_result: null
+      journal_status: null
+      persistence_outcome: not_attempted
+      filesystem_side_effects: []
+      machine_result:
+        operation: pre
+        record_id: null
+        observation: obs-focused-b
+        observation_status: complete
+        simulated: true
+        journal_status: null
+        persistence_outcome: not_attempted
+
+  - id: check_post_is_independent_simulation
+    prior_state_access: forbidden
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: null
+      check_mode: true
+      observation: *complete_c
+    oracle:
+      between_observation_delta: null
+      run_window_delta: null
+      baseline_result: null
+      journal_status: null
+      persistence_outcome: not_attempted
+      filesystem_side_effects: []
+      machine_result:
+        operation: post
+        record_id: null
+        observation: obs-focused-c
+        observation_status: complete
+        simulated: true
+        journal_status: null
+        persistence_outcome: not_attempted
+
+  - id: check_post_supplied_record_id_is_not_looked_up
+    prior_state_access: forbidden
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: syntactically-valid-but-unresolved
+      check_mode: true
+      observation: *complete_c
+    oracle:
+      record_lookup_attempted: false
+      between_observation_delta: null
+      run_window_delta: null
+      baseline_result: null
+      journal_status: null
+      persistence_outcome: not_attempted
+      filesystem_side_effects: []
+      machine_result:
+        operation: post
+        record_id: null
+        observation: obs-focused-c
+        observation_status: complete
+        simulated: true
+        journal_status: null
+        persistence_outcome: not_attempted
+
+  - id: check_post_noncomplete_fail_after_report_is_store_free
+    prior_state_access: forbidden
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: null
+      check_mode: true
+      failure_policy: fail_after_report
+      observation: *partial_b
+    oracle:
+      between_observation_delta: null
+      run_window_delta: null
+      baseline_result: null
+      journal_status: null
+      persistence_outcome: not_attempted
+      filesystem_side_effects: []
+      store_reads: 0
+      store_writes: 0
+      report_rendered_before_failure: true
+      task_failed: true
+      failure_reason: observation_noncomplete
+      observation_reason: required_field_missing
+      compact_failure_envelope_present: true
+      full_machine_result_in_failed_callback: false
+      committed_result_replayable: false
+      machine_result:
+        operation: post
+        record_id: null
+        observation: obs-focused-partial-b
+        observation_status: partial
+        simulated: true
+        journal_status: null
+        persistence_outcome: not_attempted
+
+  - id: status_noncomplete_fail_after_report_is_store_free
+    prior_state_access: forbidden
+    invocation:
+      operation: status
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: null
+      check_mode: false
+      failure_policy: fail_after_report
+      observation: *unavailable_c
+    oracle:
+      between_observation_delta: null
+      run_window_delta: null
+      baseline_result: null
+      record_id: null
+      journal_status: null
+      persistence_outcome: not_attempted
+      filesystem_side_effects: []
+      store_reads: 0
+      store_writes: 0
+      simulated: false
+      report_rendered_before_failure: true
+      task_failed: true
+      failure_reason: observation_noncomplete
+      observation_reason: docker_unavailable
+      compact_failure_envelope_present: true
+      full_machine_result_in_failed_callback: false
+      committed_result_replayable: false
+
+  - id: status_rejects_supplied_record_id
+    prior_state_access: forbidden
+    invocation:
+      operation: status
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: status-must-not-select-record
+      check_mode: false
+    oracle:
+      failure_reason: invalid_input
+      persistence_outcome: not_attempted
+      input_validation_attempted: true
+      record_lookup_attempted: false
+      discovery_attempted: false
+      filesystem_side_effects: []
+      failure_envelope_record_id: null
+
+  - id: incompatible_a_to_b_with_compatible_b_to_c
+    prior_state:
+      exists: true
+      revision: 10
+      instance_id: fixture-instance
+      latest_complete_post: *incompatible_a
+      journal:
+        - record_id: caller-scope-boundary-001
+          status: open
+          pre: *complete_b
+          expected_post_revision: 10
+          between_observation_delta:
+            comparability: incompatible_scope
+            comparison_schema_version: 1
+            from_observation_id: obs-focused-incompatible-a
+            to_observation_id: obs-focused-b
+            changes: []
+            warnings: []
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: caller-scope-boundary-001
+      check_mode: false
+      observation: *complete_c
+    oracle:
+      between_observation_delta:
+        comparability: incompatible_scope
+        comparison_schema_version: 1
+        from_observation_id: obs-focused-incompatible-a
+        to_observation_id: obs-focused-b
+        changes: []
+        warnings: []
+      run_window_delta:
+        comparability: exact
+        comparison_schema_version: 1
+        from_observation_id: obs-focused-b
+        to_observation_id: obs-focused-c
+        changes: []
+        warnings: []
+      baseline_advanced: true
+      baseline_after: obs-focused-c
+      journal_status: complete
+      forbidden_journal_status: scope_mismatch
+      persistence_outcome: committed
+
+  - id: deliberate_post_only_complete
+    prior_state:
+      exists: true
+      revision: 8
+      instance_id: fixture-instance
+      latest_complete_post: *complete_a
+      journal: []
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: null
+      check_mode: false
+      observation: *complete_c
+    oracle:
+      between_observation_delta: null
+      run_window_delta: null
+      baseline_advanced: true
+      baseline_after: obs-focused-c
+      generated_record_id: non_null
+      journal_status: incomplete_pre
+      persistence_outcome: committed
+
+  - id: post_only_unavailable_commits_incomplete_both_without_deltas
+    prior_state:
+      exists: true
+      revision: 9
+      instance_id: fixture-instance
+      latest_complete_post: *complete_a
+      journal: []
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: null
+      check_mode: false
+      observation: *unavailable_c
+    oracle:
+      generated_record_id: non_null
+      between_observation_delta: null
+      run_window_delta: null
+      baseline:
+        advanced: false
+        before: obs-focused-a
+        after: obs-focused-a
+      baseline_advanced: false
+      baseline_after: obs-focused-a
+      journal_status: incomplete_both
+      persistence_outcome: committed
+      persisted_record_projection:
+        pre_signature: null
+        pre: null
+        between_observation_delta: null
+        pre_baseline: null
+        post_signature_present: true
+        post_observation_id: obs-focused-unavailable-c
+        run_window_delta: null
+        post_baseline:
+          advanced: false
+          before: obs-focused-a
+          after: obs-focused-a
+
+  - id: pre_cannot_fill_retained_post_only_record
+    prior_state:
+      exists: true
+      revision: 9
+      instance_id: fixture-instance
+      latest_complete_post: *complete_c
+      journal:
+        - record_id: retained-post-only-001
+          status: incomplete_pre
+          pre: null
+          pre_signature: null
+          post: *complete_c
+          post_signature_present: true
+          expected_post_revision: null
+    invocation:
+      operation: pre
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: retained-post-only-001
+      check_mode: false
+    oracle:
+      failure_reason: signature_conflict
+      persistence_outcome: conflict
+      discovery_attempted: false
+      store_mutated: false
+      revision_after: 9
+      retained_record_unchanged: true
+      retroactive_pre_fill_attempted: false
+
+  - id: incomplete_pre_and_post
+    prior_state:
+      exists: true
+      revision: 9
+      instance_id: fixture-instance
+      latest_complete_post: *complete_a
+      journal:
+        - record_id: caller-pair-002
+          status: open
+          pre: *partial_b
+          expected_post_revision: 9
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: caller-pair-002
+      check_mode: false
+      observation: *unavailable_c
+    oracle:
+      between_observation_delta:
+        comparability: incomplete
+        comparison_schema_version: 1
+        from_observation_id: obs-focused-a
+        to_observation_id: obs-focused-partial-b
+        changes: []
+        warnings: []
+      run_window_delta:
+        comparability: incomplete
+        comparison_schema_version: 1
+        from_observation_id: obs-focused-partial-b
+        to_observation_id: obs-focused-unavailable-c
+        changes: []
+        warnings: []
+      baseline_advanced: false
+      baseline_after: obs-focused-a
+      journal_status: incomplete_both
+      persistence_outcome: committed
+
+  - id: correlation_inherits_to_matching_post_and_header
+    prior_state:
+      exists: true
+      revision: 20
+      instance_id: fixture-instance
+      journal:
+        - record_id: record-correlation-01
+          status: open
+          correlation_id: deploy-20260730T120000Z-7f3a
+          pre: *complete_b
+          expected_post_revision: 20
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: record-correlation-01
+      correlation_id: omitted
+      check_mode: false
+      observation: *complete_c
+    oracle:
+      record_lookup_key: record-correlation-01
+      correlation_id: deploy-20260730T120000Z-7f3a
+      correlation_inherited: true
+      correlation_changed: false
+      machine_result_correlation_id: deploy-20260730T120000Z-7f3a
+      report_header_correlation_id: deploy-20260730T120000Z-7f3a
+      journal_status: complete
+      persistence_outcome: committed
+
+  - id: correlation_mismatch_conflicts_before_discovery
+    prior_state:
+      exists: true
+      revision: 21
+      instance_id: fixture-instance
+      journal:
+        - record_id: record-correlation-02
+          status: open
+          correlation_id: deploy-20260730T120000Z-7f3a
+          pre: *complete_b
+          expected_post_revision: 21
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: record-correlation-02
+      correlation_id: deploy-20260730T120000Z-9b6c
+      check_mode: false
+    oracle:
+      record_lookup_key: record-correlation-02
+      failure_reason: signature_conflict
+      discovery_attempted: false
+      store_mutated: false
+      revision_after: 21
+      failure_envelope_correlation_id_present: false
+
+  - id: correlation_is_grouping_not_lookup
+    prior_state:
+      exists: true
+      revision: 22
+      instance_id: fixture-instance
+      journal:
+        - record_id: record-correlation-a
+          status: open
+          correlation_id: shared-deploy-20260730
+          pre: *complete_b
+          expected_post_revision: 22
+        - record_id: record-correlation-b
+          status: open
+          correlation_id: shared-deploy-20260730
+          pre: *complete_b
+          expected_post_revision: 22
+    invocation:
+      operation: post
+      instance_id: fixture-instance
+      scope: ["fixture-*"]
+      record_id: record-correlation-b
+      correlation_id: shared-deploy-20260730
+      check_mode: false
+      observation: *complete_c
+    oracle:
+      selected_record_id: record-correlation-b
+      unselected_record_status:
+        record-correlation-a: open
+      records_merged_by_correlation: false
+      correlation_unique_required: false
+      correlation_affects_comparison: false
+      correlation_affects_baseline_selection: false
+
+  - id: correlation_validation_is_bounded
+    invocation_variants:
+      valid_ascii:
+        correlation_id: deploy-20260730T120000Z-7f3a
+      valid_utf8_boundary_recipe:
+        character: x
+        repeat: 256
+      invalid_utf8_overflow_recipe:
+        character: x
+        repeat: 257
+      invalid_control:
+        correlation_id_recipe: "prefix LF suffix"
+    oracle:
+      maximum_utf8_bytes: 256
+      valid_ascii_accepted: true
+      boundary_accepted: true
+      overflow_reason: invalid_correlation_id
+      control_reason: invalid_correlation_id
+      validation_before_discovery: true
+      correlation_treated_as_non_secret: true

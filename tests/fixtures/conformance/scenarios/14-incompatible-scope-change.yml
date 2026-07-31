@@ -1,0 +1,123 @@
+# SPDX-FileCopyrightText: 2026 MDAD project contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+scenario:
+  id: 14
+  title: Incompatible scope change
+
+observations:
+  a:
+    observation_id: obs-14-a
+    observed_at: "2026-01-14T09:00:00Z"
+    status: complete
+    scope: &fixture_scope
+      patterns: ["fixture-*"]
+      identity: sha256:0f416d928469c6d885f23bebd10cda4eb3c837a5da0229a912c831feff79a207
+      comparison_schema_version: 1
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      fixture-api: &fixture_api
+        name: fixture-api
+        container_id: "000000000000000000000000000000000000000000000000000000000000008c"
+        full_image_reference: registry.example.com/fixture/api:v1
+        image_id: "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+        runtime_state: running
+        created_at: "2026-01-01T09:00:00Z"
+        started_at: "2026-01-01T09:00:10Z"
+        finished_at: null
+        restart_count: 0
+  b:
+    observation_id: obs-14-b
+    observed_at: "2026-01-14T10:00:00Z"
+    status: complete
+    scope: *fixture_scope
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      fixture-api: *fixture_api
+  c:
+    observation_id: obs-14-c
+    observed_at: "2026-01-14T10:01:00Z"
+    status: complete
+    scope:
+      patterns: ["mash-*"]
+      identity: sha256:e522e96eb21b5f25779e7bac6d019c06b6cf0f339181d36129cea5b909dcef4f
+      comparison_schema_version: 1
+    discovery_backend: synthetic
+    metadata_gaps: []
+    containers:
+      mash-api:
+        name: mash-api
+        container_id: "00000000000000000000000000000000000000000000000000000000000dbbae"
+        full_image_reference: registry.example.com/mash/api:v1
+        image_id: "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        runtime_state: running
+        created_at: "2026-01-02T09:00:00Z"
+        started_at: "2026-01-02T09:00:10Z"
+        finished_at: null
+        restart_count: 0
+
+prior_state:
+  exists: true
+  revision: 14
+  instance_id: mdad-fixture
+  latest_complete_post: a
+  journal:
+    - record_id: record-14
+      status: open
+      pre_observation: b
+      expected_post_revision: 14
+
+invocation:
+  operation: post
+  instance_id: mdad-fixture
+  scope: ["mash-*"]
+  record_id: record-14
+  check_mode: false
+  b: b
+  c: c
+
+oracle:
+  between_observation_delta:
+    comparability: exact
+    comparison_schema_version: 1
+    from_observation_id: obs-14-a
+    to_observation_id: obs-14-b
+    changes:
+      - container_name: fixture-api
+        primary_kind: unchanged
+        kinds: [unchanged]
+    warnings: []
+  run_window_delta:
+    comparability: incompatible_scope
+    comparison_schema_version: 1
+    from_observation_id: obs-14-b
+    to_observation_id: obs-14-c
+    changes: []
+    warnings: []
+  baseline:
+    advanced: true
+    before: obs-14-a
+    after: obs-14-c
+  journal:
+    status: scope_mismatch
+  persistence:
+    outcome: committed
+  human:
+    minimum_messages:
+      - "Scopes are incompatible"
+      - "No additions or removals inferred"
+      - "Baseline advanced"
+  machine_result:
+    schema_version: 1
+    operation: post
+    instance_id: mdad-fixture
+    record_id: record-14
+    observation_status: complete
+    observation: c
+    scope_identity: sha256:e522e96eb21b5f25779e7bac6d019c06b6cf0f339181d36129cea5b909dcef4f
+    baseline_advanced: true
+    journal_status: scope_mismatch
+    persistence_outcome: committed
