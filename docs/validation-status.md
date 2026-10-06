@@ -237,6 +237,29 @@ were removed after the run. The four tests passed without skips in 5.827
 seconds. The benchmark used stopped containers and did not flush host or
 daemon caches.
 
+## Revalidation for v0.1.0 (2026-10-06)
+
+Every offline and daemonless lane was rerun on commit `1cb05398d`, whose
+production code, tests and fixtures are byte-identical to the 2026-07-31
+candidate; only this document changed. The run used a fresh virtual
+environment with the exact `requirements-dev.txt` pins on CPython 3.14.4.
+
+| Proof lane | Result |
+|---|---|
+| YAML, Ansible, spelling, and REUSE lint | Passed; 124 Ansible-lint files, 143/143 REUSE files, frozen-oracle YAML line-length warnings only |
+| Role-source contract and unit tests | Passed; 11 and 209 tests |
+| Frozen fixture validator | Passed; 35 fixtures |
+| Direct local, two-host record handoff, and retained-replay Ansible contracts | Passed |
+| Callback success, expected-failure, and structured-callback negative matrices | Passed |
+| Molecule `default` scenario | Passed; all 9 stages |
+| Pure pipeline and real-filesystem persistence budgets | Passed; predeclared local regression guards |
+
+The live-Docker lanes were not rerun because the code under test is
+unchanged; their 2026-07-30 results above still apply. Version 0.1.0
+supports only executed lanes: ansible-core 2.20.1 on the controller, and the
+managed-node Python and Docker versions that the first controlled consumer
+run records. The lower proposed floors below remain unproved.
+
 ## Known limits and remaining Gate-I proofs
 
 - The proposed Ansible Core 2.15.1 floor is untested; metadata therefore names

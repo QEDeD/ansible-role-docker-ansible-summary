@@ -8,9 +8,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 All notable changes to this project will be documented in this file.
 
-The project has not made a public release.
+## 0.1.0 - 2026-10-06
 
-## Unreleased
+First tagged candidate, pinned by the maintainer's first controlled
+consumer test. It remains a `LOCALLY_VALIDATED_CANDIDATE`, not a
+Gate-I-exit release; see `docs/validation-status.md`.
 
 - Implement the narrow 13-input `pre`, `post`, and `status` role contract.
 - Add bounded Docker CLI discovery, canonical comparison, lifecycle state,

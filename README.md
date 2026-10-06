@@ -49,7 +49,8 @@ its own evidence.
 
 A controlled consumer test may pin an exact contributor-branch commit, but it
 must treat that revision as a pre-release candidate rather than a supported
-role release.
+role release. Tag `v0.1.0` marks the candidate pinned by the maintainer's
+first such test.
 
 ## Requirements
 
