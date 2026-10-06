@@ -334,6 +334,7 @@ class PersistenceFixtureContractTests(unittest.TestCase):
 
         writable_parent = os.path.join(self.ancestor, "writable")
         os.mkdir(writable_parent, 0o777)
+        os.chmod(writable_parent, 0o777)
         assert_unsafe(os.path.join(writable_parent, "state"))
         exercised.add("world_writable_nonsticky_ancestor")
 
@@ -346,6 +347,7 @@ class PersistenceFixtureContractTests(unittest.TestCase):
 
         wrong_mode_root = self.state_root("wrong-mode-root")
         os.mkdir(wrong_mode_root, 0o750)
+        os.chmod(wrong_mode_root, 0o750)
         before_mode = os.stat(wrong_mode_root).st_mode & 0o777
         assert_unsafe(wrong_mode_root)
         self.assertEqual(
@@ -420,6 +422,7 @@ class PersistenceFixtureContractTests(unittest.TestCase):
             wrong_instance_mode_root, INSTANCE_ID
         )
         os.mkdir(wrong_instance, 0o750)
+        os.chmod(wrong_instance, 0o750)
         assert_unsafe(wrong_instance_mode_root)
         self.assertEqual(0o750, os.stat(wrong_instance).st_mode & 0o777)
         exercised.add("wrong_instance_directory_mode")
@@ -470,6 +473,9 @@ class PersistenceFixtureContractTests(unittest.TestCase):
                     0o600 if kind == "hardlink" else 0o640,
                 )
                 os.close(descriptor)
+                os.chmod(
+                    state_path, 0o600 if kind == "hardlink" else 0o640
+                )
                 if kind == "hardlink":
                     os.link(
                         state_path,
@@ -515,6 +521,7 @@ class PersistenceFixtureContractTests(unittest.TestCase):
                     0o640,
                 )
                 os.close(descriptor)
+                os.chmod(lock_path, 0o640)
             assert_unsafe(state_root)
             exercised.add(variant_id)
 

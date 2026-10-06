@@ -277,9 +277,10 @@ run records. The lower proposed floors below remain unproved.
   unexpected module exception may use `state_write_failed`, and malformed
   module output may use `render_failed`. Introducing fully specific internal
   or module-contract labels requires a future versioned failure-code change.
-- No CI, immutable release tag, MDAD/MASH adapter, adoption, deployment, or
-  production cutover exists. A published contributor branch remains
-  pre-release source and does not close these gaps.
+- An immutable release tag (`v0.1.0`) and an MDAD adapter branch
+  (`downstream/das-external-role` in the deployment fork) exist. No CI,
+  GitHub release, MASH adoption, deployment, or production cutover exists;
+  a tagged candidate and an unmerged adapter do not close those gaps.
 
 ### Unexecuted Gate-I command templates
 

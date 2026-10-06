@@ -176,6 +176,7 @@ class PersistenceTests(unittest.TestCase):
 
     def test_wrong_role_owned_mode_fails_without_repair(self):
         os.mkdir(self.state_root, 0o755)
+        os.chmod(self.state_root, 0o755)
         with self.assertRaises(PersistenceError) as raised:
             self.backend.load(1048576, create_namespace=True)
         self.assertEqual("unsafe_state_namespace", raised.exception.reason)
@@ -201,6 +202,7 @@ class PersistenceTests(unittest.TestCase):
             lock_path, os.O_RDWR | os.O_CREAT | os.O_EXCL, 0o640
         )
         os.close(descriptor)
+        os.chmod(lock_path, 0o640)
         with self.assertRaises(PersistenceError) as raised:
             self.backend.load(1048576, create_namespace=False)
         self.assertEqual("unsafe_state_namespace", raised.exception.reason)

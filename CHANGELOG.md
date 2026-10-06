@@ -8,6 +8,15 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Make the mode-sensitive persistence tests independent of the umask by
+  applying each literal directory and lock-file mode with `chmod` after
+  creation; the unit lane now passes under umask 0022 and 0077 as well.
+- Record in `docs/validation-status.md` that the `v0.1.0` tag and an MDAD
+  adapter branch exist, while CI, a GitHub release and production cutover
+  do not.
+
 ## 0.1.0 - 2026-10-06
 
 First tagged candidate, pinned by the maintainer's first controlled
