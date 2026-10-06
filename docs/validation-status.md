@@ -28,8 +28,11 @@ Docker CLI 20.10.0, and a wider platform matrix have not been executed.
 
 ## Contract provenance
 
-The normative v1 contract is the frozen planning package on
-`deployment/das-rewrite-planning` in the MDAD deployment fork:
+The normative v1 contract is the frozen planning package in the MDAD
+deployment fork. It was frozen at this commit on the fork's original
+planning branch `deployment/das-rewrite-planning`; since the fork's
+2026-08-04 branch-topology migration, the package lives on
+`downstream/das-rewrite-planning`:
 
 ```text
 32c7c106fe1b7f6a126f094774cb5531f44fb0e4
